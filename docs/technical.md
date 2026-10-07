@@ -230,7 +230,7 @@ Android 工程位于仓库的 `android/`，使用 Capacitor 8 将 Web 产物封�
 
 ### 工具链与配置
 
-- Node.js 24 或更高版本、Android Studio、JDK 17。
+- Node.js 24 或更高版本、Android Studio、JDK 21。
 - Android SDK Platform 36.1、Build Tools 36.x、Platform Tools。
 - Android 工程使用 Capacitor 8 模板、AGP 8.13.x 与 Gradle Wrapper 8.14.3。
 - Android 端若启用 AI 主题或歌词代理，`.env.local` 中的 `VITE_FOLIA_API_BASE` 必须是自行托管的 HTTPS 地址；密钥只放在服务端。
