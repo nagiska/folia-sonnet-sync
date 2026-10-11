@@ -20,7 +20,7 @@
     "dev:probe": "vite --open /dev-probe.html",
     "build": "npm run build:vercel-api && vite build",
     "build:vercel-api": "tsc -p api-ts/tsconfig.json",
-    "build:capacitor": "cross-env FOLIA_BUILD_TARGET=capacitor vite build",
+    "build:capacitor": "cross-env FOLIA_BUILD_TARGET=capacitor vite build --mode capacitor",
     "cap:sync:android": "npm run build:capacitor && cap sync android",
     "cap:assets:android": "node scripts/generate-android-assets.mjs",
     "cap:open:android": "cap open android",
