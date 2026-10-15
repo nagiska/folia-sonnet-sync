@@ -24,6 +24,14 @@ html[data-runtime='capacitor-android'] [data-folia-player-controls][data-folia-p
   max-width: calc(100vw - 120px - var(--folia-safe-area-left, 0px) - var(--folia-safe-area-right, 0px));
 }
 
+html[data-runtime='capacitor-android'] .lattice-tools {
+  --wall-tools-panel-width: min(296px, calc(100vw - 32px - var(--folia-safe-area-left, 0px) - var(--folia-safe-area-right, 0px)));
+}
+
+html[data-runtime='capacitor-android'] .lattice-tools-stack {
+  max-height: calc(100dvh - var(--wall-tools-bottom, 24px) - 64px - var(--wall-tools-top-reserve, 48px) - var(--folia-safe-area-top, 0px) - var(--folia-safe-area-bottom, 0px));
+}
+
 html[data-runtime='capacitor-android'] [data-folia-home-header] {
   padding-top: var(--folia-safe-area-top, 0px);
   padding-left: var(--folia-safe-area-left, 0px);

@@ -60,7 +60,24 @@ export type OnlineFixtureRule = {
     /** 上游原始顺序（含重复）。 */
     rawIndexes: number[];
     isOwned?: boolean;
+    /** 集合详情里的描述（歌单简介）；首页列表那一份不带。 */
+    description?: string;
 };
+
+/** online-dupes 的描述：一行，原样显示。 */
+export const PROBE_SHORT_DESCRIPTION = 'Songs that show up twice, kept as the upstream sent them.';
+/** online-owned-twice 的描述：多段、带首尾空白，收起时要截断，展开后在块内滚动。 */
+export const PROBE_LONG_DESCRIPTION = [
+    '',
+    '  A long playlist description that keeps going well past the four lines the seam shows before it is opened.',
+    'It has several paragraphs, separated by line breaks, so the expanded text keeps them.',
+    '',
+    'The second paragraph repeats a few sentences to push the text past the expanded cap as well: '
+        + 'Amber, Birch, Cedar, Dune and Ember are the words every probe track borrows. '.repeat(6).trim(),
+    '',
+    'The last line ends the description.  ',
+    '',
+].join('\n');
 
 export const ONLINE_FIXTURES: Readonly<Record<OnlineFixtureId, OnlineFixtureRule>> = {
     'online-big': { providerId: PROBE_PROVIDER_A, collectionId: 'big', type: 'playlist', name: 'Big Playlist', prefix: 'big', rawIndexes: range(350) },
@@ -71,6 +88,7 @@ export const ONLINE_FIXTURES: Readonly<Record<OnlineFixtureId, OnlineFixtureRule
         name: 'Duplicate Entries',
         prefix: 'dupes',
         rawIndexes: range(220).map(position => DUPE_POSITIONS[position] ?? position),
+        description: PROBE_SHORT_DESCRIPTION,
     },
     'online-flaky': { providerId: PROBE_PROVIDER_A, collectionId: 'flaky', type: 'playlist', name: 'Flaky Paging', prefix: 'flaky', rawIndexes: range(400) },
     'online-broken': { providerId: PROBE_PROVIDER_A, collectionId: 'broken', type: 'playlist', name: 'Broken Paging', prefix: 'broken', rawIndexes: range(400) },
@@ -98,6 +116,7 @@ export const ONLINE_FIXTURES: Readonly<Record<OnlineFixtureId, OnlineFixtureRule
         prefix: 'otwice',
         rawIndexes: range(12).map(position => (position === OWNED_TWICE_POSITION ? 1 : position)),
         isOwned: true,
+        description: PROBE_LONG_DESCRIPTION,
     },
     'online-public': { providerId: PROBE_PROVIDER_A, collectionId: 'public', type: 'playlist', name: 'Public Playlist', prefix: 'public', rawIndexes: range(30) },
     'online-daily': { providerId: PROBE_PROVIDER_A, collectionId: 'daily_recommendations', type: 'daily_recommendations', name: 'Daily Picks', prefix: 'daily', rawIndexes: range(10) },
@@ -205,6 +224,12 @@ export const HOME_PLAYLIST_FIXTURES: Readonly<Record<string, OnlineFixtureId[]>>
     [PROBE_PROVIDER_B]: ['collide-b'],
 };
 
+/**
+ * 首页歌单列表里 provider 标成「我喜欢的音乐」（isLiked）的那一张：probe-a 的 public。只在首页的账户歌单列表上标
+ * （集合详情探针直接打开 public 时照旧不带），bravais 首页的特殊卡片与直达入口靠它。
+ */
+export const HOME_LIKED_PLAYLIST: { providerId: string; fixture: OnlineFixtureId } = { providerId: PROBE_PROVIDER_A, fixture: 'online-public' };
+
 /** 只有 probe-a 有云盘。 */
 export const HOME_CLOUD = { providerId: PROBE_PROVIDER_A, id: 'cloud', name: 'Probe Cloud', prefix: 'cloud', count: 4 } as const;
 
@@ -270,9 +295,17 @@ export type OnlineArtistRule = {
     albumCount: number;
 };
 
-const probeArtistCover = (fill: string): string => (
-    `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="${fill}"/></svg>`)}`
-);
+/**
+ * 手动点检用的参数（用例不带，照旧）：?realCovers=<目录地址> 时歌手照片也换成那个目录里的一张真图（与 fakeProviders 的
+ * 专辑封面同一个目录）；?artistName=… 给主歌手换个名字（看长名字在海报上放不放得下）。
+ */
+const PROBE_MANUAL = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+
+const probeArtistCover = (fill: string, realIndex: number): string => {
+    const real = PROBE_MANUAL?.get('realCovers');
+    if (real) return `${real.endsWith('/') ? real : `${real}/`}a${String(realIndex).padStart(2, '0')}.jpg`;
+    return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="${fill}"/></svg>`)}`;
+};
 
 /** omni 拉歌手专辑的页大小（ArtistGridView 写死 50）。 */
 export const ARTIST_ALBUM_PAGE_SIZE = 50;
@@ -284,9 +317,9 @@ export const ONLINE_ARTISTS: Readonly<Record<OnlineArtistFixtureId, OnlineArtist
     'artist-main': {
         providerId: PROBE_PROVIDER_A,
         artistId: 'ar-1',
-        name: 'Probe Artist',
+        name: PROBE_MANUAL?.get('artistName') || 'Probe Artist',
         description: 'Probe Artist biography.',
-        coverUrl: probeArtistCover('#7c3aed'),
+        coverUrl: probeArtistCover('#7c3aed', 1),
         topSongPrefix: 'artop',
         topSongIndexes: range(10, 20),
         albumPrefix: 'ar1-al',
@@ -298,7 +331,7 @@ export const ONLINE_ARTISTS: Readonly<Record<OnlineArtistFixtureId, OnlineArtist
         artistId: 'ar-2',
         name: 'Guest Singer',
         description: 'Guest Singer biography.',
-        coverUrl: probeArtistCover('#0891b2'),
+        coverUrl: probeArtistCover('#0891b2', 5),
         topSongPrefix: 'gtop',
         topSongIndexes: range(3),
         albumPrefix: 'ar2-al',

@@ -6,6 +6,7 @@ import type {
     ProviderCollection,
     ProviderLyricsResult,
     ProviderPage,
+    ProviderPlaybackAttempt,
     ProviderUser,
     QrLoginMethod,
     QrLoginState,
@@ -16,7 +17,11 @@ import { toSafePlaybackUrl } from '../../utils/appPlaybackHelpers';
 import { fetchQQLyrics, searchQQLyrics } from '../../utils/lyrics/providers/qqLyricProvider';
 import { writeProviderSessionValue } from './providerStorage';
 import { normalizeQqCollection, normalizeQqSong, normalizeQqUser } from './qqNormalize';
-import { clearQqSession, getQqTransportAvailability, hasQqSession, requestQq } from './qqTransport';
+import { clearQqSession, getQqRemoteApiBase, getQqTransportAvailability, hasQqSession, requestQq } from './qqTransport';
+import { attemptChainDecision, attemptFromError, emptyAttempt, summarizePlaybackAttempts } from './playbackAttempts';
+import { collectLoginBackendDiagnostics } from './loginBackendDiagnostics';
+import { canRunLoginSelfCheck, runLoginSelfCheck } from './loginSelfCheck';
+import { formatDiagnosticClock } from '../../utils/qrLoginDiagnosticReport';
 
 // src/services/onlineMusic/qqProvider.ts
 
@@ -105,12 +110,7 @@ let ownedPlaylistRouteMissing = false;
 
 export const resetQqProviderRuntimeCache = (): void => {
     ownedPlaylistRouteMissing = false;
-    lastQrDiagnostics = [];
-    qrAwaitingAccount = false;
-    qrDiagnosticAttempt += 1;
-    qrCurrentKey = null;
-    qrScanned = false;
-    qrLoggedFailures.clear();
+    lastLoginStatusCheck = null;
 };
 
 /**
@@ -277,9 +277,26 @@ export const resolveQqSongCatalogRefs = async (song: UnifiedSong): Promise<Unifi
     };
 };
 
+// `data.playUrl` 缺失、不是对象，或者里面找不到条目：有应答但形态不可用，记成 invalid-response 的一次尝试。
+const missingPlayUrlEntryAttempt = (resolvedQuality: AudioQualityPreference): ProviderPlaybackAttempt => ({
+    stage: 'music_play',
+    quality: resolvedQuality,
+    outcome: 'error',
+    code: 'invalid-response',
+    detail: 'QQMusicApi music_play returned no playUrl entry',
+});
+
+/**
+ * 按音质降档请求 music_play，任意一档拿到 URL 就返回；每一档的失败都记成一次尝试，
+ * 全部失败（或遇到限流、服务缺失、超时这类继续降档也没用的失败）时抛出 summarizePlaybackAttempts 的汇总错误。
+ * auth-required 原样重抛同一个实例。
+ */
 const getAudioSource = async (song: SongResult, quality: AudioQualityPreference) => {
     const songmid = getQqSongMid(song);
-    if (!songmid) return null;
+    if (!songmid) {
+        // 拼不出 music_play 的路径：这是歌曲数据不完整，不是「没有音源」，不发请求。
+        throw new OnlineProviderError('invalid-response', 'QQ song has no songmid', 'qq');
+    }
     const sourceRef = song.sourceRef?.kind === 'online' && song.sourceRef.providerId === 'qq'
         ? song.sourceRef
         : undefined;
@@ -288,7 +305,17 @@ const getAudioSource = async (song: SongResult, quality: AudioQualityPreference)
     // The backend answers HTTP 200 with an empty `url` plus an `error` string when the account may
     // not stream the song (membership, region, takedown). Without keeping that apart from a request
     // failure, an unplayable song looks exactly like a transient error worth retrying.
+    // Correction: the backend (qrLogin.js:482-495, getMusicPlay.js:113-122) replaces every file's reason
+    // with a fixed string, so an empty purl only proves "no link for this request" and is classified as
+    // unknown. It must never be read as membership, region or takedown.
     let sawEmptyPlayLink = false;
+    const attempts: ProviderPlaybackAttempt[] = [];
+    let lastError: unknown;
+    // 只有没有会话、且上游确实回过空链接时，登录才「可能」有用；不能据此断定为 auth-required。
+    const summarize = () => summarizePlaybackAttempts('qq', attempts, {
+        lastError,
+        signInMayHelp: !hasQqSession() && attempts.some(attempt => attempt.outcome === 'empty'),
+    });
 
     for (const candidate of QQ_QUALITY_FALLBACKS[quality]) {
         try {
@@ -297,8 +324,10 @@ const getAudioSource = async (song: SongResult, quality: AudioQualityPreference)
                 ...(mediaId ? { mediaId } : {}),
                 quality: candidate.apiQuality,
             });
-            const direct = response?.data?.playUrl?.[songmid];
-            const fallback = Object.values(response?.data?.playUrl ?? {})[0] as any;
+            const playUrl = response?.data?.playUrl;
+            const playUrlMap = playUrl && typeof playUrl === 'object' ? playUrl : {};
+            const direct = playUrlMap[songmid];
+            const fallback = Object.values(playUrlMap)[0] as any;
             const entry = direct ?? fallback;
             const url = toSafePlaybackUrl(String(direct?.url || fallback?.url || ''));
             if (url) {
@@ -308,8 +337,14 @@ const getAudioSource = async (song: SongResult, quality: AudioQualityPreference)
                     quality: candidate.resolvedQuality,
                 };
             }
-            if (entry) {
+            if (entry && typeof entry === 'object') {
                 sawEmptyPlayLink = true;
+                attempts.push(emptyAttempt('music_play', {
+                    quality: candidate.resolvedQuality,
+                    detail: typeof entry.error === 'string' ? entry.error : undefined,
+                }));
+            } else {
+                attempts.push(missingPlayUrlEntryAttempt(candidate.resolvedQuality));
             }
         } catch (error) {
             if (error instanceof OnlineProviderError && error.code === 'auth-required') throw error;
@@ -318,6 +353,11 @@ const getAudioSource = async (song: SongResult, quality: AudioQualityPreference)
                 candidateQuality: candidate.resolvedQuality,
                 ...errorFields(error),
             });
+            lastError = error;
+            const attempt = attemptFromError('music_play', error, { quality: candidate.resolvedQuality });
+            attempts.push(attempt);
+            // QQ 没有替代接口：stop-chain（超时）与 stop-all（限流、服务缺失）都立即结束；network 和 5xx 继续降档。
+            if (attemptChainDecision(attempt) !== 'continue') throw summarize();
         }
     }
 
@@ -327,7 +367,7 @@ const getAudioSource = async (song: SongResult, quality: AudioQualityPreference)
         // `true` means the upstream answered normally but issued no stream for this account.
         upstreamRefusedPlayLink: sawEmptyPlayLink,
     });
-    return null;
+    throw summarize();
 };
 
 // Delegates to the existing QRC pipeline, which owns decryption, translation and romanization.
@@ -346,13 +386,17 @@ const getLyrics = async (song: SongResult): Promise<ProviderLyricsResult> => {
     return { lyrics: lyrics ?? null, isPureMusic: false };
 };
 
+// 最近一次登录态检查的结论。扫码确认后账户没加载出来（account-refresh-failed）时，报告靠它说明卡在哪：
+// 没存下 session、后端不认这个 session、还是请求本身失败。
+let lastLoginStatusCheck: string | null = null;
+const noteLoginStatusCheck = (summary: string): void => {
+    lastLoginStatusCheck = `${formatDiagnosticClock(Date.now())} ${summary}`;
+};
+
 const getLoginStatus = async (): Promise<ProviderUser | null> => {
-    // 扫码确认后的第一次账号加载认领这次刷新（记下确认时的尝试代次）；其余加载都是普通登录态检查，照常记日志。
-    const qrRefreshAttempt = claimQrAccountRefresh();
-    const isQrAccountRefresh = qrRefreshAttempt !== null;
     // No opaque backend session means the account cannot be authenticated, so the startup request is skipped.
     if (!hasQqSession()) {
-        recordQrAccountResult('missing-session', qrRefreshAttempt);
+        noteLoginStatusCheck('no backend session stored');
         return null;
     }
 
@@ -360,29 +404,26 @@ const getLoginStatus = async (): Promise<ProviderUser | null> => {
         const response = await requestQq<any>('login_status');
         const profile = response?.data?.profile;
         if (!profile) {
-            recordQrAccountResult('anonymous', qrRefreshAttempt);
-            if (!isQrAccountRefresh) console.info('[QQProvider] login-status:anonymous');
+            noteLoginStatusCheck('login_status: the backend does not recognize the stored session');
+            console.info('[QQProvider] login-status:anonymous');
             return null;
         }
         const user = normalizeQqUser(profile);
-        recordQrAccountResult('profile-present', qrRefreshAttempt);
         // The acceptance test account returned a profile without a display name, so the profile itself is the signal.
+        noteLoginStatusCheck(`signed in (user id ${user.id ? 'present' : 'missing'}, nickname ${user.nickname ? 'present' : 'missing'})`);
         console.info('[QQProvider] login-status:profile', {
             hasUserId: Boolean(user.id),
             hasNickname: Boolean(user.nickname),
         });
         return user;
     } catch (error) {
-        if (qrRefreshAttempt !== null) recordQrTransportFailure('account-refresh', error, qrRefreshAttempt);
+        noteLoginStatusCheck(`login_status failed: ${errorFields(error).message}`);
         // Missing, expired, rejected, or non-persisted backend sessions all arrive as 401.
         if (error instanceof OnlineProviderError && error.code === 'auth-required') {
-            if (!isQrAccountRefresh) console.info('[QQProvider] login-status:auth-required');
+            console.info('[QQProvider] login-status:auth-required');
             return null;
         }
-        if (!isQrAccountRefresh) console.warn('[QQProvider] login-status:error', {
-            transport: error instanceof OnlineProviderError ? safeQrCategory(error.code, QR_TRANSPORT_CODES) : 'unknown',
-            httpStatus: error instanceof OnlineProviderError ? safeQrHttpStatus(error.httpStatus) : 'unavailable',
-        });
+        console.warn('[QQProvider] login-status:error', errorFields(error));
         throw error;
     }
 };
@@ -482,179 +523,91 @@ const getAvailability = (): ReturnType<typeof getQqTransportAvailability> => {
 // 二维码失效时用户看到的是可重试的「已过期」，而不是一个还在轮询的死码。
 const QQ_QR_TTL_MS = 175_000;
 
-// Diagnostics may be shared from the log panel. Accept only fixed categories from the API.
-const QR_FAILURE_STAGES = new Set([
-    'qr-key', 'device-bootstrap', 'session-bootstrap',
-    'qr-create', 'mqtt-listener', 'qr-poll', 'qr-event', 'credential-payload',
-    'credential-exchange', 'credential-validation', 'session-issue',
-]);
-const QR_FAILURE_REASONS = new Set([
-    'local-backoff', 'session-busy', 'upstream-http-error',
-    'upstream-rejected', 'mqtt-websocket-error', 'mqtt-websocket-closed',
-    'mqtt-packet-timeout', 'mqtt-handshake-timeout', 'mqtt-handshake-failed',
-    'missing-credential', 'network-timeout', 'dns-error', 'connection-reset',
-    'connection-refused', 'network-error', 'login-rejected', 'user-canceled',
-    'qr-timeout', 'unexpected-error',
-]);
-const QR_TRANSPORT_CODES = new Set([
-    'auth-required', 'unsupported', 'unavailable', 'network', 'invalid-response',
-]);
-let lastQrDiagnostics: string[] = [];
-let qrAwaitingAccount = false;
-let qrDiagnosticAttempt = 0;
-let qrDiagnosticMethod = 'qq';
-// 当前这一轮的 key。取消它（关窗、TTL 到期、换方式前停掉旧会话）和要新码一样推进尝试代次，
-// 晚于这条边界回来的结果不记失败、不改摘要、不等账号加载。会话自己的代次在 core，这里只护住模块状态。
-let qrCurrentKey: string | null = null;
-// 这一轮是否报过 802：扫过码之后才过期多半是手机端没确认或被拒，仍算失败。
-let qrScanned = false;
-const qrLoggedFailures = new Set<string>();
+// qq-music-api 在扫码失败时附带的结构化字段：失败阶段与原因、上游的 HTTP 状态与返回码、退避时长、上一次失败。
+const QR_FAILURE_FIELDS = [
+    'failureStage', 'failureReason', 'upstreamHttpStatus', 'upstreamCode', 'upstreamGlobalCode', 'upstreamSubCode',
+    'retryAfterMs', 'lastFailure',
+] as const;
 
-const safeQrCategory = (value: unknown, allowed: Set<string>): string =>
-    typeof value === 'string' && allowed.has(value) ? value : 'unavailable';
-
-const safeQrNumber = (value: unknown, signed = false): string =>
-    typeof value === 'number' && Number.isSafeInteger(value) && (signed || value >= 0)
-        ? String(value) : 'unavailable';
-
-const safeQrHttpStatus = (value: unknown): string =>
-    typeof value === 'number' && Number.isInteger(value) && value >= 100 && value <= 599
-        ? String(value) : 'unavailable';
-
-const qrFailureSummary = (response: any): string => {
-    const stage = safeQrCategory(response?.failureStage, QR_FAILURE_STAGES);
-    const reason = safeQrCategory(response?.failureReason, QR_FAILURE_REASONS);
-    const summary = `stage=${stage} reason=${reason} upstreamCode=${safeQrNumber(response?.upstreamCode, true)} retryAfterMs=${safeQrNumber(response?.retryAfterMs)}`;
-    const extra = [
-        ...(response?.upstreamHttpStatus === undefined ? [] : [`upstreamHttpStatus=${safeQrHttpStatus(response.upstreamHttpStatus)}`]),
-        ...(response?.upstreamGlobalCode === undefined ? [] : [`upstreamGlobalCode=${safeQrNumber(response.upstreamGlobalCode, true)}`]),
-        ...(response?.upstreamSubCode === undefined ? [] : [`upstreamSubCode=${safeQrNumber(response.upstreamSubCode, true)}`]),
-    ];
-    return [summary, ...extra].join(' ');
+/** 失败响应的原始字段（原样进诊断时间线）。 */
+const qrFailureDetail = (response: any): Record<string, unknown> => {
+    const detail: Record<string, unknown> = { code: response?.code ?? null };
+    if (typeof response?.message === 'string' && response.message) detail.message = response.message;
+    for (const field of QR_FAILURE_FIELDS) {
+        if (response?.[field] !== undefined) detail[field] = response[field];
+    }
+    return detail;
 };
 
 // 自然过期只认结构化字段：3.1.3 的 failureReason=qr-timeout，或会话已被清掉（过期、取消）时后端回的、
-// 不带任何失败字段的 800。不比对后端文案；旧后端带退避却没有原因的 800 仍按失败记。
+// 不带任何失败字段的 800。不比对后端文案。
 const isQrNaturalExpiry = (response: any): boolean => (
     response?.failureReason === 'qr-timeout'
     || ['failureStage', 'failureReason', 'upstreamCode', 'retryAfterMs'].every(field => response?.[field] === undefined)
 );
 
-const qrFailureLines = (details: string, body?: any): string[] => {
-    const lines = [details];
-    if (body?.lastFailure && typeof body.lastFailure === 'object' && !Array.isArray(body.lastFailure))
-        lines.push(`last-failure: ${qrFailureSummary(body.lastFailure)}`);
-    return lines;
-};
+// QQ 音乐账号的登录设备数已达上限时凭据交换返回的上游码（与 .github/triage/login-playbook.json 的 qq-device-limit 同一条判定）。
+const QQ_DEVICE_LIMIT_UPSTREAM_CODE = 20279;
 
-// Only filtered summaries reach console; a shrinking cooldown is still the same failure.
-const logQrFailure = (lines: string[], attempt: number): void => {
-    if (attempt !== qrDiagnosticAttempt) return;
-    const summary = lines.join(' | ');
-    const signature = summary.replace(/retryAfterMs=\d+/g, 'retryAfterMs=countdown');
-    if (qrLoggedFailures.has(signature)) return;
-    qrLoggedFailures.add(signature);
-    console.warn('[QQProvider] qr-login:failed', `method=${qrDiagnosticMethod} ${summary}`);
-};
+// 最近一次要码的时刻：只认这之后的凭据交换记录，主进程环形记录里上一轮的结果不算。
+let qrKeyRequestedAt = 0;
 
-// 扫码确认后只把下一次开始的账号加载当作「确认后的刷新」，认领后立即清掉标记，
-// 之后（或之前已在途）的登录态检查都按普通检查处理。返回确认时的尝试代次，没有待认领的刷新时为 null。
-const claimQrAccountRefresh = (): number | null => {
-    if (!qrAwaitingAccount) return null;
-    qrAwaitingAccount = false;
-    return qrDiagnosticAttempt;
-};
-
-// 结束当前一轮：推进代次，在途请求晚回时按旧一轮处理。摘要保留，便于读取上一轮的结果。
-const retireQrAttempt = (): void => {
-    qrDiagnosticAttempt += 1;
-    qrCurrentKey = null;
-    qrAwaitingAccount = false;
-};
-
-const recordQrAccountResult = (reason: 'missing-session' | 'anonymous' | 'profile-present', attempt: number | null): void => {
-    if (attempt === null || attempt !== qrDiagnosticAttempt) return;
-    lastQrDiagnostics.push(`account-refresh: reason=${reason}`);
-    if (reason !== 'profile-present') logQrFailure(lastQrDiagnostics, attempt);
-};
-
-const recordQrTransportFailure = (step: 'qr-key' | 'qr-create' | 'qr-check' | 'account-refresh', error: unknown, attempt: number): void => {
-    if (attempt !== qrDiagnosticAttempt) return;
-    const code = error instanceof OnlineProviderError
-        ? safeQrCategory(error.code, QR_TRANSPORT_CODES) : 'unknown';
-    const status = error instanceof OnlineProviderError
-        ? safeQrHttpStatus(error.httpStatus) : 'unavailable';
-    const response = error instanceof OnlineProviderError ? error.cause : undefined;
-    const body = response && typeof response === 'object' && !Array.isArray(response) ? response as Record<string, unknown> : undefined;
-    const details = `${step}: transport=${code}${status === 'unavailable' ? '' : ` httpStatus=${status}`}${body || status !== 'unavailable' ? ` ${qrFailureSummary(body)}` : ''}`;
-    const lines = qrFailureLines(details, body);
-    lastQrDiagnostics = step === 'account-refresh' ? [...lastQrDiagnostics, ...lines] : lines;
-    logQrFailure(lastQrDiagnostics, attempt);
-    qrAwaitingAccount = false;
-};
-
-const checkQr = async (key: string): Promise<QrLoginState> => {
-    const attempt = qrDiagnosticAttempt;
-    let response: any;
+// 登录设备超限的判定。微信通道的凭据交换没有回退，20279 直接出现在响应的 upstreamCode 上。QQ 通道交换失败后
+// 后端会拿 MQTT 凭据再验一次，验证也被拒（code 1000）才失败在 credential-validation，响应里只剩后一次的码；
+// 20279 只在主进程钩子记下的 qq-auth.upstream-result 里，桌面版去那里找本轮最后一次凭据交换。网页版拿不到，按普通失败处理。
+const isQqDeviceLimit = async (response: any): Promise<boolean> => {
+    if (Number(response?.upstreamCode) === QQ_DEVICE_LIMIT_UPSTREAM_CODE) return true;
+    if (response?.failureStage !== 'credential-validation') return false;
+    const getSnapshot = typeof window === 'undefined' ? undefined : window.electron?.getLoginDiagnostics;
+    if (!getSnapshot) return false;
     try {
-        response = await requestQq<any>('login_qr_check', { key });
-    } catch (error) {
-        recordQrTransportFailure('qr-check', error, attempt);
-        throw error;
+        const snapshot = await getSnapshot('qq');
+        if (snapshot?.providerId !== 'qq') return false;
+        const exchanges = snapshot.authEvents.filter(event => (
+            event.at >= qrKeyRequestedAt
+            && event.event === 'qq-auth.upstream-result'
+            && (event.details as { phase?: unknown } | null)?.phase === 'credential-exchange'
+        ));
+        const last = exchanges[exchanges.length - 1]?.details as { upstreamCode?: unknown } | undefined;
+        return Number(last?.upstreamCode) === QQ_DEVICE_LIMIT_UPSTREAM_CODE;
+    } catch {
+        // 取不到快照只是少了这条提示，失败照常交给会话。
+        return false;
     }
+};
+
+// 后端把 QQ / 微信的原生扫码状态翻译成网易的那套码值：801 等待、802 已扫、803 确认（带 session）、800 过期或失败。
+// 800 靠结构化字段区分过期与失败（上游拒绝、MQTT 断开、凭据交换失败、手机上取消……）；失败与别的返回码都原样交给会话。
+const checkQr = async (key: string): Promise<QrLoginState> => {
+    const response = await requestQq<any>('login_qr_check', { key });
     const code = Number(response?.code);
     if (code === 801) return { state: 'waiting' };
-    if (code === 802) {
-        if (attempt === qrDiagnosticAttempt) qrScanned = true;
-        return { state: 'scanned' };
-    }
+    if (code === 802) return { state: 'scanned' };
     if (code === 803) {
-        const hasCookie = typeof response?.cookie === 'string' && Boolean(response.cookie);
         // Idempotent with the transport, which already stored the opaque session string on this response.
         if (typeof response?.cookie === 'string' && response.cookie) {
             writeProviderSessionValue('qq', 'cookie', response.cookie);
         }
-        if (attempt === qrDiagnosticAttempt) {
-            lastQrDiagnostics = [`qr-check: result=confirmed hasSession=${hasQqSession()} hasCookie=${hasCookie}`];
-            qrAwaitingAccount = true;
-        }
         return { state: 'confirmed' };
     }
-    if (code === 800) {
-        // 没扫过码的自然过期不算失败（与 core 会话一致），按 info 记一条；扫过码后才过期仍按失败记。
-        // 两种都回 expired，core 据自己记下的 scanned 区分 expired-after-scan。
-        if (isQrNaturalExpiry(response)) {
-            if (attempt === qrDiagnosticAttempt) {
-                lastQrDiagnostics = [`qr-check: result=${qrScanned ? 'expired-after-scan' : 'expired'} ${qrFailureSummary(response)}`];
-                if (qrScanned) logQrFailure(lastQrDiagnostics, attempt);
-                else console.info('[QQProvider] qr-login:expired', `method=${qrDiagnosticMethod} ${lastQrDiagnostics[0]}`);
-            }
-            return { state: 'expired' };
-        }
-        const diagnostic = `qr-check: ${qrFailureSummary(response)}`;
-        if (attempt === qrDiagnosticAttempt) {
-            lastQrDiagnostics = qrFailureLines(diagnostic, response);
-            logQrFailure(lastQrDiagnostics, attempt);
-        }
-        // 800 also carries an upstream rejection; `upstreamCode` is the upstream safety number, left unnamed.
-        if (response?.upstreamCode !== undefined || response?.retryAfterMs !== undefined) {
-            // 手机上取消是用户自己的操作，交给 core 的是结构化原因；冷却时长一并交出，界面据此暂缓重试。
-            const retryAfterMs = Number.isSafeInteger(response?.retryAfterMs) && response.retryAfterMs >= 0
-                ? response.retryAfterMs as number : undefined;
-            return {
-                state: 'error',
-                message: response?.message,
-                ...(response?.failureReason === 'user-canceled' ? { reason: 'canceled-on-device' as const } : {}),
-                ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
-            };
-        }
-        return { state: 'expired' };
-    }
-    if (attempt === qrDiagnosticAttempt) {
-        lastQrDiagnostics = [`qr-check: unexpected-code=${safeQrNumber(response?.code)}`];
-        logQrFailure(lastQrDiagnostics, attempt);
-    }
-    return { state: 'error', message: response?.message };
+    if (code === 800 && isQrNaturalExpiry(response)) return { state: 'expired' };
+
+    const retryAfterMs = Number.isSafeInteger(response?.retryAfterMs) && response.retryAfterMs >= 0
+        ? response.retryAfterMs as number
+        : undefined;
+    const stage = typeof response?.failureStage === 'string'
+        ? ` (stage ${response.failureStage}, reason ${typeof response?.failureReason === 'string' ? response.failureReason : 'unknown'})`
+        : '';
+    return {
+        state: 'error',
+        message: `code ${response?.code ?? 'none'}: ${typeof response?.message === 'string' && response.message ? response.message : 'no message'}${stage}`,
+        // 手机上取消是用户自己的操作：交给会话的是结构化原因，界面据此不给诊断入口；冷却时长一并交出，重试暂缓。
+        ...(response?.failureReason === 'user-canceled' ? { reason: 'canceled-on-device' as const } : {}),
+        // 登录设备超限是账号侧的原因：界面据此把简单办法换成清理登录设备的步骤。
+        ...(await isQqDeviceLimit(response) ? { reason: 'device-limit' as const } : {}),
+        ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
+        detail: qrFailureDetail(response),
+    };
 };
 
 // `/user/playlist` returns the whole GetPlaylistByUin list and takes no upstream paging parameters,
@@ -896,59 +849,37 @@ export const qqProvider: OnlineMusicProvider = {
         logout,
         getQrLoginMethods,
         resolveQrLoginMethods,
+        // 要码与生成二维码失败时，transport 的错误已带着 HTTP 状态、后端原文（含失败阶段与原因）与退避时长；
+        // 没拿到 key 或图片就直接失败：空 key 只会换来后端的 400，空图片会让界面一直转圈。
         async getQrKey(methodId) {
-            const attempt = ++qrDiagnosticAttempt;
-            lastQrDiagnostics = [];
-            qrAwaitingAccount = false;
-            qrScanned = false;
-            qrLoggedFailures.clear();
-            const channel = resolveQrLoginMethodId(methodId);
-            qrDiagnosticMethod = safeQrCategory(channel, new Set(['qq', 'wechat']));
-            try {
-                const response = await requestQq<any>('login_qr_key', {
-                    channel,
-                });
-                const key = String(response?.data?.unikey || '');
-                if (attempt === qrDiagnosticAttempt && key.trim()) qrCurrentKey = key;
-                if (!key.trim() && attempt === qrDiagnosticAttempt) {
-                    lastQrDiagnostics = ['qr-key: reason=missing-key'];
-                    logQrFailure(lastQrDiagnostics, attempt);
-                }
-                return key;
-            } catch (error) {
-                recordQrTransportFailure('qr-key', error, attempt);
-                throw error;
-            }
+            qrKeyRequestedAt = Date.now();
+            const response = await requestQq<any>('login_qr_key', { channel: resolveQrLoginMethodId(methodId) });
+            const key = String(response?.data?.unikey || '');
+            if (key.trim()) return key;
+            throw new OnlineProviderError('invalid-response', 'QQMusicApi login_qr_key returned no key', 'qq', response);
         },
         async createQr(key) {
-            const attempt = qrDiagnosticAttempt;
-            try {
-                const response = await requestQq<any>('login_qr_create', { key });
-                const image = String(response?.data?.qrimg || '');
-                if (!image.trim() && attempt === qrDiagnosticAttempt) {
-                    lastQrDiagnostics = ['qr-create: reason=missing-image'];
-                    logQrFailure(lastQrDiagnostics, attempt);
-                }
-                return image;
-            } catch (error) {
-                recordQrTransportFailure('qr-create', error, attempt);
-                throw error;
-            }
+            const response = await requestQq<any>('login_qr_create', { key });
+            const image = String(response?.data?.qrimg || '');
+            if (image.trim()) return image;
+            throw new OnlineProviderError('invalid-response', 'QQMusicApi login_qr_create returned no image', 'qq', response);
         },
         checkQr,
         async getQrLoginDiagnostics() {
-            return [...lastQrDiagnostics];
+            return collectLoginBackendDiagnostics('qq', [
+                `session: backend session stored=${hasQqSession() ? 'yes' : 'no'}`,
+                `login channels: ${declaredChannels ? declaredChannels.join(', ') : 'not declared by the backend'}`,
+                `last account check: ${lastLoginStatusCheck ?? 'none'}`,
+            ], getQqRemoteApiBase());
         },
+        canRunQrLoginSelfCheck: () => canRunLoginSelfCheck(getQqRemoteApiBase()),
+        runQrLoginSelfCheck: () => runLoginSelfCheck('qq', getQqRemoteApiBase()),
         getQrTtlMs: () => QQ_QR_TTL_MS,
         async cancelQr(key) {
-            // 只有取消当前这把 key 才结束这一轮；被新码顶替后才补发的旧 key 取消不影响新一轮。
-            if (key === qrCurrentKey) retireQrAttempt();
             // 后端对未知 key 也回 200，所以失败只可能是网络层。调用方在关窗时 fire-and-forget，
             // 抛出去只会让 UI 卡在一个用户无从处理的错误上，而残留会话最迟 3 分钟后自己过期。
             await requestQq('login_qr_cancel', { key }).catch(error => {
-                console.warn('[QQProvider] qr-cancel:failed', {
-                    transport: error instanceof OnlineProviderError ? safeQrCategory(error.code, QR_TRANSPORT_CODES) : 'unknown',
-                });
+                console.warn('[QQProvider] qr-cancel:failed', errorFields(error));
             });
         },
     },

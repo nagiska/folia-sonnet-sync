@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import en from '@/i18n/locales/en';
 import type { LibraryLoginPhase, LibraryNeteaseBackendHealth } from '@/library/core/contracts/account';
 import {
+    LOGIN_FAILURE_TIPS,
+    resolveLoginFailureTips,
     LOGIN_METHOD_STEP_COPY,
     canLogoutProvider,
     canRetryLogin,
     canShowLoginDiagnostics,
     isLoginRetryCoolingDown,
-    describeAccountError,
-    describeLoginStateMessage,
+    describeLoginError,
     isAwaitingLoginMethod,
     isLoginDialogVisible,
     resolveActiveProviderId,
@@ -16,17 +17,17 @@ import {
     resolveLoginBackendState,
     resolveLoginCopy,
     resolveLoginDiagnosticsPrompt,
+    resolveLoginReportRoute,
     resolveLoginSessionCopy,
     retryAfterMsOf,
     resolveLoginStatusMessage,
     resolveLogoutEligibility,
     resolveProviderSelectLabel,
     resolveProviderSelection,
-    providerOwnsLoginFailureSummary,
     resolveProviderSwitchCopy,
     shouldResumeLoginAfterBackendRestart,
 } from '@/library/core/model/accountRules';
-import type { ProviderAccountSummary, QrLoginMethod } from '@/types/onlineMusic';
+import { OnlineProviderError, type ProviderAccountSummary, type QrLoginMethod } from '@/types/onlineMusic';
 
 // test/unit/library/accountRules.test.ts
 // 在线账户的纯规则：选平台的三支（未配置 / 直接切 / 扫码）、当前平台回落、登录文案与状态 key（未知 provider 回落网易）、
@@ -243,6 +244,33 @@ describe('login copy', () => {
         expectKey(LOGIN_METHOD_STEP_COPY.pending.key);
         expectKey(resolveLoginDiagnosticsPrompt('expired-after-scan').key);
         expectKey(resolveLoginDiagnosticsPrompt('check-error').key);
+        expectKey(LOGIN_FAILURE_TIPS.title.key);
+        for (const tip of LOGIN_FAILURE_TIPS.items) expectKey(tip.key);
+        expectKey(LOGIN_FAILURE_TIPS.escalation.key);
+        const deviceLimitTips = resolveLoginFailureTips('device-limit');
+        expectKey(deviceLimitTips.title.key);
+        for (const tip of deviceLimitTips.items) expectKey(tip.key);
+    });
+
+    // 失败后先给简单办法：重启应用；换个网络再重启应用。诊断与反馈收在后面。
+    it('offers restarting and switching networks before any diagnostics', () => {
+        expect(LOGIN_FAILURE_TIPS).toEqual({
+            title: { key: 'home.qrTipsTitle' },
+            items: [{ key: 'home.qrTipRestart' }, { key: 'home.qrTipSwitchNetwork' }],
+            escalation: { key: 'home.qrDiagnosticsToggle' },
+            escalationElsewhere: { key: 'home.qrDiagnosticsToggleElsewhere' },
+        });
+    });
+
+    // 登录设备超限是账号侧的原因：重启和换网络没用，简单办法换成清理登录设备的步骤；其余失败不变。
+    it('swaps the tips for removing signed-in devices when the account hit its device limit', () => {
+        expect(resolveLoginFailureTips('device-limit')).toEqual({
+            title: { key: 'home.qrDeviceLimitTipsTitle' },
+            items: [{ key: 'home.qrDeviceLimitTipRemove' }, { key: 'home.qrDeviceLimitTipQuota' }, { key: 'home.qrDeviceLimitTipRescan' }],
+        });
+        for (const failure of ['start-error', 'check-error', 'expired-after-scan', 'connection-reset'] as const) {
+            expect(resolveLoginFailureTips(failure), failure).toBe(LOGIN_FAILURE_TIPS);
+        }
     });
 
     it('hides the status line while choosing a method or when the backend is down', () => {
@@ -284,25 +312,12 @@ describe('login session derivations', () => {
         expect(retry('error', { failed: true })).toBe(false);
     });
 
-    it('offers diagnostics for any failure unless the backend is down', () => {
-        expect(canShowLoginDiagnostics({ providerId: 'netease', failure: 'check-error', backend: OK_BACKEND })).toBe(true);
-        expect(canShowLoginDiagnostics({ providerId: 'kugou', failure: 'account-refresh-failed', backend: OK_BACKEND })).toBe(true);
-        expect(canShowLoginDiagnostics({ providerId: 'netease', failure: null, backend: OK_BACKEND })).toBe(false);
-        expect(canShowLoginDiagnostics({ providerId: 'netease', failure: 'start-error', backend: FAILED_BACKEND })).toBe(false);
-    });
-
-    it('never offers diagnostics for QQ, whose safe failure summary lives in the ordinary log', () => {
-        for (const failure of ['start-error', 'check-error', 'expired-after-scan', 'account-refresh-failed'] as const) {
-            expect(canShowLoginDiagnostics({ providerId: 'qq', failure, backend: OK_BACKEND }), failure).toBe(false);
-            // 其它 provider（含 mod 源这类未知 id）同一失败照样给入口。
-            for (const providerId of ['netease', 'kugou', 'bodian', 'folium.example']) {
-                expect(canShowLoginDiagnostics({ providerId, failure, backend: OK_BACKEND }), `${providerId} ${failure}`).toBe(true);
-            }
+    // 后端没拉起来时同样给诊断：报告里有拉起的每一步和错误原文。
+    it('offers diagnostics for any failure, including a backend that never started', () => {
+        for (const failure of ['start-error', 'check-error', 'expired-after-scan', 'account-refresh-failed', 'connection-reset', 'device-limit'] as const) {
+            expect(canShowLoginDiagnostics({ failure }), failure).toBe(true);
         }
-        expect(providerOwnsLoginFailureSummary('qq')).toBe(true);
-        expect(providerOwnsLoginFailureSummary('netease')).toBe(false);
-        // 只认自有成员：原型链上的名字不算。
-        expect(providerOwnsLoginFailureSummary('constructor')).toBe(false);
+        expect(canShowLoginDiagnostics({ failure: null })).toBe(false);
     });
 
     it('shows the login dialog except while methods resolve and after the scan is confirmed', () => {
@@ -342,23 +357,39 @@ describe('login backend state', () => {
     });
 });
 
-describe('account error descriptions', () => {
-    const secret = 'private-token https://private.example/?cookie=private-cookie';
-
-    it('keeps name and message for ordinary providers', () => {
-        const error = new TypeError(secret);
-        expect(describeAccountError('netease', error)).toEqual({ name: 'TypeError', message: secret });
-        expect(describeAccountError('folium.example', 'plain failure')).toEqual({ name: 'Error', message: 'plain failure' });
-        expect(describeLoginStateMessage('kugou', secret)).toEqual({ message: secret });
-        expect(describeLoginStateMessage('kugou', undefined)).toEqual({});
+describe('login error descriptions', () => {
+    it('keeps name and message, the same for every provider', () => {
+        expect(describeLoginError(new TypeError('Failed to fetch'))).toEqual({ name: 'TypeError', message: 'Failed to fetch' });
+        expect(describeLoginError('plain failure')).toEqual({ name: 'Error', message: 'plain failure' });
     });
 
-    it('reduces QQ errors to a fixed category without the raw text or a custom name', () => {
-        const error = new Error(secret);
-        error.name = 'private-name';
-        expect(describeAccountError('qq', error)).toEqual({ reason: 'provider-error' });
-        expect(describeAccountError('qq', secret)).toEqual({ reason: 'provider-error' });
-        expect(describeLoginStateMessage('qq', secret)).toEqual({});
+    it('adds the provider error category, HTTP status, cooldown and the raw backend response', () => {
+        const body = { code: 429, message: 'QR login is temporarily backed off', failureStage: 'qr-key', failureReason: 'local-backoff' };
+        const error = new OnlineProviderError('network', 'QQMusicApi login_qr_key failed: HTTP 429', 'qq', body, 429, 30_000);
+        expect(describeLoginError(error)).toEqual({
+            name: 'OnlineProviderError',
+            message: 'QQMusicApi login_qr_key failed: HTTP 429',
+            code: 'network',
+            httpStatus: 429,
+            retryAfterMs: 30_000,
+            cause: body,
+        });
+    });
+
+    it('adds the Node error code, the structured QR reason and a nested cause', () => {
+        const error = Object.assign(new Error('NetEase QR key request failed: code 502: read ECONNRESET', { cause: new Error('socket closed') }), {
+            code: 'ECONNRESET',
+            qrLoginReason: 'connection-reset',
+            transient: true,
+        });
+        expect(describeLoginError(error)).toEqual({
+            name: 'Error',
+            message: 'NetEase QR key request failed: code 502: read ECONNRESET',
+            code: 'ECONNRESET',
+            reason: 'connection-reset',
+            transient: true,
+            cause: 'Error: socket closed',
+        });
     });
 });
 
@@ -373,8 +404,9 @@ describe('cancel on the phone and backend cooldown', () => {
     });
 
     it('offers no diagnostics for a login the user canceled on the phone', () => {
-        expect(canShowLoginDiagnostics({ providerId: 'netease', failure: 'canceled-on-device', backend: OK_BACKEND })).toBe(false);
-        expect(canShowLoginDiagnostics({ providerId: 'netease', failure: 'check-error', backend: OK_BACKEND })).toBe(true);
+        expect(canShowLoginDiagnostics({ failure: 'canceled-on-device' })).toBe(false);
+        expect(canShowLoginDiagnostics({ failure: 'check-error' })).toBe(true);
+        expect(canShowLoginDiagnostics({ failure: 'connection-reset' })).toBe(true);
     });
 
     it('says why the login stopped and how long the retry waits', () => {
@@ -385,7 +417,11 @@ describe('cancel on the phone and backend cooldown', () => {
         expect(status({ failure: 'start-error', retryCooldownSeconds: 25 }))
             .toEqual({ key: 'home.qrRetryCooldown', values: { seconds: 25 } });
         expect(status({ failure: 'check-error', retryCooldownSeconds: null })).toEqual({ key: 'home.loginError' });
-        for (const key of ['qrCanceledOnDevice', 'qrCanceledOnDeviceCooldown', 'qrRetryCooldown']) {
+        expect(status({ failure: 'connection-reset', retryCooldownSeconds: null })).toEqual({ key: 'home.qrConnectionReset' });
+        expect(status({ failure: 'device-limit', retryCooldownSeconds: null })).toEqual({ key: 'home.qrDeviceLimit' });
+        expect(status({ failure: 'device-limit', retryCooldownSeconds: 20 }))
+            .toEqual({ key: 'home.qrRetryCooldown', values: { seconds: 20 } });
+        for (const key of ['qrCanceledOnDevice', 'qrCanceledOnDeviceCooldown', 'qrRetryCooldown', 'qrConnectionReset', 'qrDeviceLimit']) {
             expect((en as unknown as { home: Record<string, unknown> }).home[key]).toBeTruthy();
         }
     });
@@ -396,5 +432,34 @@ describe('cancel on the phone and backend cooldown', () => {
         expect(retryAfterMsOf(Object.assign(new Error('x'), { retryAfterMs: '25000' }))).toBeNull();
         expect(retryAfterMsOf(new Error('x'))).toBeNull();
         expect(retryAfterMsOf(null)).toBeNull();
+    });
+});
+
+describe('where a login diagnostics report goes', () => {
+    const doneWith = (kind: string) => ({
+        status: 'done' as const,
+        result: {} as never,
+        verdict: { kind, detail: null, proxy: null } as never,
+    });
+    const official = { build: 'official' as const, web: false };
+
+    it('sends official desktop failures to GitHub', () => {
+        expect(resolveLoginReportRoute(official, { failure: 'check-error', selfCheck: null })).toBe('github');
+        expect(resolveLoginReportRoute(official, { failure: 'start-error', selfCheck: null })).toBe('github');
+    });
+
+    it('treats a web build that cannot start or reach its API as a deployment problem', () => {
+        expect(resolveLoginReportRoute({ build: 'unofficial' as const, web: true }, { failure: 'start-error', selfCheck: null })).toBe('web-deployment');
+        expect(resolveLoginReportRoute({ build: 'self-hosted' as const, web: true }, { failure: 'check-error', selfCheck: doneWith('remote-unreachable') })).toBe('web-deployment');
+        expect(resolveLoginReportRoute({ build: 'self-hosted' as const, web: true }, { failure: 'check-error', selfCheck: doneWith('network-ok') })).toBe('github');
+    });
+
+    it('sends self-hosted failures that are not deployment problems to GitHub', () => {
+        expect(resolveLoginReportRoute({ build: 'self-hosted', web: false }, { failure: 'check-error', selfCheck: null })).toBe('github');
+    });
+
+    it('never sends unofficial builds to GitHub', () => {
+        expect(resolveLoginReportRoute({ build: 'unofficial' as const, web: false }, { failure: 'check-error', selfCheck: null })).toBe('unofficial-build');
+        expect(resolveLoginReportRoute({ build: 'unofficial' as const, web: true }, { failure: 'check-error', selfCheck: doneWith('network-ok') })).toBe('unofficial-build');
     });
 });
