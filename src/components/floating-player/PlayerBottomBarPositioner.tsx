@@ -42,6 +42,7 @@ const PlayerBottomBarPositioner: React.FC<PlayerBottomBarPositionerProps> = ({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
+                data-folia-safe-bottom="shift"
                 className="pointer-events-none fixed inset-x-4 z-50 rounded-3xl border-2 border-dashed md:inset-x-8"
                 style={{
                     borderColor: accentColor,
@@ -56,6 +57,7 @@ const PlayerBottomBarPositioner: React.FC<PlayerBottomBarPositionerProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.22, ease: 'easeOut' }}
+                data-folia-safe-top="shift"
                 className="pointer-events-auto fixed left-1/2 top-8 z-[70] -translate-x-1/2"
             >
                 <div className={`flex items-center gap-3 rounded-full border px-4 py-2 text-sm shadow-xl backdrop-blur-xl ${chipClass}`}>

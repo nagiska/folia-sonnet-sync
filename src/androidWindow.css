@@ -1,0 +1,81 @@
+/* 当前文件：Android 背景保持铺满，只让交互控件避开系统栏与挖孔。 */
+html[data-runtime='capacitor-android'] [data-folia-safe-top='shift'] {
+  margin-top: var(--folia-safe-area-top, 0px);
+}
+
+html[data-runtime='capacitor-android'] [data-folia-safe-bottom='shift'] {
+  margin-bottom: var(--folia-safe-area-bottom, 0px);
+}
+
+html[data-runtime='capacitor-android'] [data-folia-safe-left='shift'] {
+  margin-left: var(--folia-safe-area-left, 0px);
+}
+
+html[data-runtime='capacitor-android'] [data-folia-safe-right='shift'] {
+  margin-right: var(--folia-safe-area-right, 0px);
+}
+
+html[data-runtime='capacitor-android'] [data-folia-player-controls] {
+  left: calc(50% + (var(--folia-safe-area-left, 0px) - var(--folia-safe-area-right, 0px)) / 2);
+  max-width: min(calc(32rem + var(--folium-player-bar-extra, 0px)), calc(100vw - var(--folia-safe-area-left, 0px) - var(--folia-safe-area-right, 0px)));
+}
+
+html[data-runtime='capacitor-android'] [data-folia-player-controls][data-folia-player-view='home'] {
+  max-width: calc(100vw - 120px - var(--folia-safe-area-left, 0px) - var(--folia-safe-area-right, 0px));
+}
+
+html[data-runtime='capacitor-android'] [data-folia-home-header] {
+  padding-top: var(--folia-safe-area-top, 0px);
+  padding-left: var(--folia-safe-area-left, 0px);
+  padding-right: var(--folia-safe-area-right, 0px);
+}
+
+html[data-runtime='capacitor-android'] [data-folia-safe-dialog] {
+  --folia-dialog-padding-x: 1rem;
+  --folia-dialog-padding-y: 1rem;
+  padding-top: calc(var(--folia-dialog-padding-y) + var(--folia-safe-area-top, 0px));
+  padding-bottom: calc(var(--folia-dialog-padding-y) + var(--folia-safe-area-bottom, 0px));
+  padding-left: calc(var(--folia-dialog-padding-x) + var(--folia-safe-area-left, 0px));
+  padding-right: calc(var(--folia-dialog-padding-x) + var(--folia-safe-area-right, 0px));
+}
+
+html[data-runtime='capacitor-android'] [data-folia-safe-dialog='search'],
+html[data-runtime='capacitor-android'] [data-folia-safe-dialog='subview'] {
+  --folia-dialog-padding-x: 0.75rem;
+}
+
+html[data-runtime='capacitor-android'] [data-folia-safe-dialog='subview'] {
+  --folia-dialog-padding-y: 0.75rem;
+}
+
+html[data-runtime='capacitor-android'] [data-folia-safe-dialog='settings'] {
+  --folia-dialog-padding-y: 2rem;
+}
+
+/* Explicit dialog heights must fit the available area when the keyboard is open. */
+html[data-runtime='capacitor-android'] [data-folia-safe-dialog] > div {
+  max-height: 100%;
+}
+
+@media (min-width: 768px) {
+  html[data-runtime='capacitor-android'] [data-folia-player-controls][data-folia-player-view='home'] {
+    max-width: min(calc(32rem + var(--folium-player-bar-extra, 0px)), calc(100vw - 120px - var(--folia-safe-area-left, 0px) - var(--folia-safe-area-right, 0px)));
+  }
+}
+
+@media (min-width: 640px) {
+  html[data-runtime='capacitor-android'] [data-folia-safe-dialog='search'] {
+    --folia-dialog-padding-x: 1.5rem;
+    --folia-dialog-padding-y: 1.5rem;
+  }
+
+  html[data-runtime='capacitor-android'] [data-folia-safe-dialog='subview'] {
+    --folia-dialog-padding-x: 1.25rem;
+    --folia-dialog-padding-y: 1.25rem;
+  }
+
+  html[data-runtime='capacitor-android'] [data-folia-safe-dialog='settings'] {
+    --folia-dialog-padding-x: 1.25rem;
+    --folia-dialog-padding-y: 3rem;
+  }
+}

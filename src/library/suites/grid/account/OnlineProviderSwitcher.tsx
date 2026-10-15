@@ -147,6 +147,8 @@ const OnlineProviderSwitcher: React.FC<OnlineProviderSwitcherProps> = ({
         <div
             ref={setRootNode}
             data-testid="online-provider-switcher"
+            data-folia-safe-bottom="shift"
+            data-folia-safe-right="shift"
             className="pointer-events-auto absolute bottom-4 right-4 z-[100] md:bottom-6 md:right-6"
         >
             <div className={`flex items-center rounded-full p-0.5 shadow-lg md:p-1.5 ${surfaceClass}`}>

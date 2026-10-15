@@ -60,6 +60,7 @@ const ThemedDialog: React.FC<ThemedDialogProps> = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     data-folia-keyboard-window="true"
+                    data-folia-safe-dialog="true"
                     className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
                     onMouseDown={handleOverlayMouseDown}
                     onClick={handleBackdropClick}

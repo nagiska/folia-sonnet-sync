@@ -1148,6 +1148,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={shellTransition}
+                    data-folia-safe-dialog="subview"
                     className="fixed inset-0 p-3 sm:p-5"
                     style={{ backgroundColor: overlayBackground, zIndex }}
                     onMouseDown={handleOverlayMouseDown}
@@ -1290,6 +1291,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             transition={shellTransition}
             data-folia-keyboard-window="true"
             data-ponder-page-scope={activeTab === 'help' ? 'help-page' : 'settings-page'}
+            data-folia-safe-dialog="settings"
             className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-8 sm:px-5 sm:py-12"
             style={{ backgroundColor: overlayBackground }}
             onMouseDown={handleOverlayMouseDown}

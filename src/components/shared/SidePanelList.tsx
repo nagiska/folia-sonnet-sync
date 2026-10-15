@@ -103,6 +103,9 @@ export function SidePanelList<T>({
                     exit={{ opacity: 0, x: 60, scale: 0.95 }}
                     transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                     data-testid="side-panel-list"
+                    data-folia-safe-top="shift"
+                    data-folia-safe-bottom="shift"
+                    data-folia-safe-right="shift"
                     className="absolute right-6 top-24 w-80 max-w-[calc(100vw-3rem)] rounded-3xl z-[80] flex flex-col p-6 shadow-2xl border backdrop-blur-2xl pointer-events-auto theme-glass-panel"
                     style={{
                         bottom: bottomBarBottomPx,
