@@ -46,7 +46,7 @@ uniform vec4 uOutputTexture;
 vec4 filterVertexPosition( void )
 {
     vec2 position = aPosition * uOutputFrame.zw + uOutputFrame.xy;
-
+    
     position.x = position.x * (2.0 / uOutputTexture.x) - 1.0;
     position.y = position.y * (2.0*uOutputTexture.z / uOutputTexture.y) - uOutputTexture.z;
 
@@ -361,11 +361,11 @@ uniform sampler2D uBackTexture;
 {FUNCTIONS}
 
 void main()
-{
+{ 
     vec4 back = texture(uBackTexture, vTextureCoord);
     vec4 front = texture(uTexture, vTextureCoord);
     float blendedAlpha = front.a + back.a * (1.0 - front.a);
-
+    
     {MAIN}
 }
 `,N_=`in vec2 aPosition;
@@ -379,7 +379,7 @@ uniform vec4 uOutputTexture;
 vec4 filterVertexPosition( void )
 {
     vec2 position = aPosition * uOutputFrame.zw + uOutputFrame.xy;
-
+    
     position.x = position.x * (2.0 / uOutputTexture.x) - 1.0;
     position.y = position.y * (2.0*uOutputTexture.z / uOutputTexture.y) - uOutputTexture.z;
 
@@ -440,12 +440,12 @@ fn filterTextureCoord( aPosition:vec2<f32> ) -> vec2<f32>
 
 fn globalTextureCoord( aPosition:vec2<f32> ) -> vec2<f32>
 {
-  return  (aPosition.xy / gfu.uGlobalFrame.zw) + (gfu.uGlobalFrame.xy / gfu.uGlobalFrame.zw);
+  return  (aPosition.xy / gfu.uGlobalFrame.zw) + (gfu.uGlobalFrame.xy / gfu.uGlobalFrame.zw);  
 }
-
+  
 @vertex
 fn mainVertex(
-  @location(0) aPosition : vec2<f32>,
+  @location(0) aPosition : vec2<f32>, 
 ) -> VSOutput {
   return VSOutput(
    filterVertexPosition(aPosition),
@@ -464,7 +464,7 @@ fn mainFragment(
    var back =  textureSample(uBackTexture, uSampler, uv);
    var front = textureSample(uTexture, uSampler, uv);
    var blendedAlpha = front.a + back.a * (1.0 - front.a);
-
+   
    var out = vec4<f32>(0.0,0.0,0.0,0.0);
 
    {MAIN}
@@ -699,17 +699,17 @@ fn filterTextureCoord( aPosition:vec2<f32> ) -> vec2<f32>
 
 fn globalTextureCoord( aPosition:vec2<f32> ) -> vec2<f32>
 {
-  return  (aPosition.xy / gfu.uGlobalFrame.zw) + (gfu.uGlobalFrame.xy / gfu.uGlobalFrame.zw);
+  return  (aPosition.xy / gfu.uGlobalFrame.zw) + (gfu.uGlobalFrame.xy / gfu.uGlobalFrame.zw);  
 }
 
 fn getSize() -> vec2<f32>
 {
   return gfu.uGlobalFrame.zw;
 }
-
+  
 @vertex
 fn mainVertex(
-  @location(0) aPosition : vec2<f32>,
+  @location(0) aPosition : vec2<f32>, 
 ) -> VSOutput {
   return VSOutput(
    filterVertexPosition(aPosition),
@@ -722,9 +722,9 @@ fn mainFragment(
   @location(0) uv: vec2<f32>,
   @builtin(position) position: vec4<f32>
 ) -> @location(0) vec4<f32> {
-
+ 
     var sample = textureSample(uTexture, uSampler, uv);
-
+    
     return sample * alphaUniforms.uAlpha;
 }`,gR=Object.defineProperty,_R=Object.defineProperties,xR=Object.getOwnPropertyDescriptors,un=Object.getOwnPropertySymbols,Y_=Object.prototype.hasOwnProperty,K_=Object.prototype.propertyIsEnumerable,q_=(r,t,e)=>t in r?gR(r,t,{enumerable:!0,configurable:!0,writable:!0,value:e}):r[t]=e,Yl=(r,t)=>{for(var e in t||(t={}))Y_.call(t,e)&&q_(r,e,t[e]);if(un)for(var e of un(t))K_.call(t,e)&&q_(r,e,t[e]);return r},vR=(r,t)=>_R(r,xR(t)),bR=(r,t)=>{var e={};for(var s in r)Y_.call(r,s)&&t.indexOf(s)<0&&(e[s]=r[s]);if(r!=null&&un)for(var s of un(r))t.indexOf(s)<0&&K_.call(r,s)&&(e[s]=r[s]);return e};const Z_=class KT extends Ae{constructor(t){t=Yl(Yl({},KT.defaultOptions),t);const e=Wt.from({vertex:{source:Vl,entryPoint:"mainVertex"},fragment:{source:Vl,entryPoint:"mainFragment"}}),s=Yt.from({vertex:bs,fragment:V_,name:"alpha-filter"}),i=t,{alpha:n}=i,o=bR(i,["alpha"]),a=new At({uAlpha:{value:n,type:"f32"}});super(vR(Yl({},o),{gpuProgram:e,glProgram:s,resources:{alphaUniforms:a}}))}get alpha(){return this.resources.alphaUniforms.uniforms.uAlpha}set alpha(t){this.resources.alphaUniforms.uniforms.uAlpha=t}};Z_.defaultOptions={alpha:1};let yR=Z_;const Kl={5:[.153388,.221461,.250301],7:[.071303,.131514,.189879,.214607],9:[.028532,.067234,.124009,.179044,.20236],11:[.0093,.028002,.065984,.121703,.175713,.198596],13:[.002406,.009255,.027867,.065666,.121117,.174868,.197641],15:[489e-6,.002403,.009246,.02784,.065602,.120999,.174697,.197448]},TR=["in vec2 vBlurTexCoords[%size%];","uniform sampler2D uTexture;","out vec4 finalColor;","void main(void)","{","    %blur%","}"].join(`
 `);function Q_(r){const t=Kl[r],e=t.length;let s="";const i="finalColor = ",n="    + ",o="texture(uTexture, vBlurTexCoords[%index%]) * %value%";for(let a=0;a<r;a++){const l=a===0?i:n,u=a<e?a:r-a-1,h=o.replace("%index%",a.toString()).replace("%value%",t[u].toString());s+=`${l}${h}
@@ -935,7 +935,7 @@ struct VSOutput {
     @builtin(position) position: vec4<f32>,
     @location(0) uv : vec2<f32>,
   };
-
+  
 fn filterVertexPosition(aPosition:vec2<f32>) -> vec4<f32>
 {
     var position = aPosition * gfu.uOutputFrame.zw + gfu.uOutputFrame.xy;
@@ -953,7 +953,7 @@ fn filterTextureCoord( aPosition:vec2<f32> ) -> vec2<f32>
 
 @vertex
 fn mainVertex(
-  @location(0) aPosition : vec2<f32>,
+  @location(0) aPosition : vec2<f32>, 
 ) -> VSOutput {
   return VSOutput(
    filterVertexPosition(aPosition),
@@ -969,12 +969,12 @@ fn mainFragment(
 
 
   var c = textureSample(uTexture, uSampler, uv);
-
+  
   if (colorMatrixUniforms.uAlpha == 0.0) {
     return c;
   }
 
-
+ 
     // Un-premultiply alpha before applying the color matrix. See issue #3539.
     if (c.a > 0.0) {
       c.r /= c.a;
@@ -1035,8 +1035,8 @@ uniform vec2 uScale;
 void main()
 {
     vec4 map = texture(uMapTexture, vFilterUv);
-
-    vec2 offset = uInputSize.zw * (uRotation * (map.xy - 0.5)) * uScale;
+    
+    vec2 offset = uInputSize.zw * (uRotation * (map.xy - 0.5)) * uScale; 
 
     finalColor = texture(uTexture, clamp(vTextureCoord + offset, uInputClamp.xy, uInputClamp.zw));
 }
@@ -1054,7 +1054,7 @@ uniform mat3 uFilterMatrix;
 vec4 filterVertexPosition( void )
 {
     vec2 position = aPosition * uOutputFrame.zw + uOutputFrame.xy;
-
+    
     position.x = position.x * (2.0 / uOutputTexture.x) - 1.0;
     position.y = position.y * (2.0*uOutputTexture.z / uOutputTexture.y) - uOutputTexture.z;
 
@@ -1127,7 +1127,7 @@ fn filterTextureCoord( aPosition:vec2<f32> ) -> vec2<f32>
 
 fn globalTextureCoord( aPosition:vec2<f32> ) -> vec2<f32>
 {
-  return  (aPosition.xy / gfu.uGlobalFrame.zw) + (gfu.uGlobalFrame.xy / gfu.uGlobalFrame.zw);
+  return  (aPosition.xy / gfu.uGlobalFrame.zw) + (gfu.uGlobalFrame.xy / gfu.uGlobalFrame.zw);  
 }
 
 fn getFilterCoord(aPosition:vec2<f32> ) -> vec2<f32>
@@ -1138,13 +1138,13 @@ fn getFilterCoord(aPosition:vec2<f32> ) -> vec2<f32>
 fn getSize() -> vec2<f32>
 {
 
-
+  
   return gfu.uGlobalFrame.zw;
 }
-
+  
 @vertex
 fn mainVertex(
-  @location(0) aPosition : vec2<f32>,
+  @location(0) aPosition : vec2<f32>, 
 ) -> VSOutput {
   return VSOutput(
    filterVertexPosition(aPosition),
@@ -1162,8 +1162,8 @@ fn mainFragment(
 
     var map = textureSample(uMapTexture, uMapSampler, filterUv);
 
-    var offset =  gfu.uInputSize.zw * (filterUniforms.uRotation * (map.xy - 0.5)) * filterUniforms.uScale;
-
+    var offset =  gfu.uInputSize.zw * (filterUniforms.uRotation * (map.xy - 0.5)) * filterUniforms.uScale; 
+   
     return textureSample(uTexture, uSampler, clamp(uv + offset, gfu.uInputClamp.xy, gfu.uInputClamp.zw));
 }`,LR=Object.defineProperty,NR=Object.defineProperties,XR=Object.getOwnPropertyDescriptors,dn=Object.getOwnPropertySymbols,mx=Object.prototype.hasOwnProperty,gx=Object.prototype.propertyIsEnumerable,_x=(r,t,e)=>t in r?LR(r,t,{enumerable:!0,configurable:!0,writable:!0,value:e}):r[t]=e,jR=(r,t)=>{for(var e in t||(t={}))mx.call(t,e)&&_x(r,e,t[e]);if(dn)for(var e of dn(t))gx.call(t,e)&&_x(r,e,t[e]);return r},HR=(r,t)=>NR(r,XR(t)),zR=(r,t)=>{var e={};for(var s in r)mx.call(r,s)&&t.indexOf(s)<0&&(e[s]=r[s]);if(r!=null&&dn)for(var s of dn(r))t.indexOf(s)<0&&gx.call(r,s)&&(e[s]=r[s]);return e};class WR extends Ae{constructor(...t){let e=t[0];e instanceof _e&&(e={sprite:e,scale:t[1]});const s=e,{sprite:i,scale:n}=s,o=zR(s,["sprite","scale"]);let a=n!=null?n:20;typeof a=="number"&&(a=new ut(a,a));const l=new At({uFilterMatrix:{value:new D,type:"mat3x3<f32>"},uScale:{value:a,type:"vec2<f32>"},uRotation:{value:new Float32Array([0,0,0,0]),type:"mat2x2<f32>"}}),u=Yt.from({vertex:fx,fragment:px,name:"displacement-filter"}),h=Wt.from({vertex:{source:Ql,entryPoint:"mainVertex"},fragment:{source:Ql,entryPoint:"mainFragment"}}),c=i.texture.source;super(HR(jR({},o),{gpuProgram:h,glProgram:u,resources:{filterUniforms:l,uMapTexture:c,uMapSampler:c.style}})),this._sprite=e.sprite,this._sprite.renderable=!1}apply(t,e,s,i){const n=this.resources.filterUniforms.uniforms;t.calculateSpriteMatrix(n.uFilterMatrix,this._sprite);const o=this._sprite.worldTransform,a=Math.sqrt(o.a*o.a+o.b*o.b),l=Math.sqrt(o.c*o.c+o.d*o.d);a!==0&&l!==0&&(n.uRotation[0]=o.a/a,n.uRotation[1]=o.b/a,n.uRotation[2]=o.c/l,n.uRotation[3]=o.d/l),this.resources.uMapTexture=this._sprite.texture.source,t.applyFilter(this,e,s,i)}get scale(){return this.resources.filterUniforms.uniforms.uScale}}var xx=`
 in vec2 vTextureCoord;
@@ -1244,17 +1244,17 @@ fn filterTextureCoord( aPosition:vec2<f32> ) -> vec2<f32>
 
 fn globalTextureCoord( aPosition:vec2<f32> ) -> vec2<f32>
 {
-  return  (aPosition.xy / gfu.uGlobalFrame.zw) + (gfu.uGlobalFrame.xy / gfu.uGlobalFrame.zw);
+  return  (aPosition.xy / gfu.uGlobalFrame.zw) + (gfu.uGlobalFrame.xy / gfu.uGlobalFrame.zw);  
 }
 
 fn getSize() -> vec2<f32>
 {
   return gfu.uGlobalFrame.zw;
 }
-
+  
 @vertex
 fn mainVertex(
-  @location(0) aPosition : vec2<f32>,
+  @location(0) aPosition : vec2<f32>, 
 ) -> VSOutput {
   return VSOutput(
    filterVertexPosition(aPosition),
@@ -1276,12 +1276,12 @@ fn mainFragment(
 ) -> @location(0) vec4<f32> {
 
     var pixelPosition =  globalTextureCoord(position.xy);// / (getSize());//-  gfu.uOutputFrame.xy);
-
-
+  
+    
     var sample = textureSample(uTexture, uSampler, uv);
     var randomValue =  rand(pixelPosition.xy * noiseUniforms.uSeed);
     var diff = (randomValue - 0.5) * noiseUniforms.uNoise;
-
+  
     // Un-premultiply alpha before applying the color matrix. See issue #3539.
     if (sample.a > 0.0) {
       sample.r /= sample.a;
@@ -1297,7 +1297,7 @@ fn mainFragment(
     sample.r *= sample.a;
     sample.g *= sample.a;
     sample.b *= sample.a;
-
+    
     return sample;
 }`,VR=Object.defineProperty,YR=Object.defineProperties,KR=Object.getOwnPropertyDescriptors,pn=Object.getOwnPropertySymbols,vx=Object.prototype.hasOwnProperty,bx=Object.prototype.propertyIsEnumerable,yx=(r,t,e)=>t in r?VR(r,t,{enumerable:!0,configurable:!0,writable:!0,value:e}):r[t]=e,tu=(r,t)=>{for(var e in t||(t={}))vx.call(t,e)&&yx(r,e,t[e]);if(pn)for(var e of pn(t))bx.call(t,e)&&yx(r,e,t[e]);return r},qR=(r,t)=>YR(r,KR(t)),ZR=(r,t)=>{var e={};for(var s in r)vx.call(r,s)&&t.indexOf(s)<0&&(e[s]=r[s]);if(r!=null&&pn)for(var s of pn(r))t.indexOf(s)<0&&bx.call(r,s)&&(e[s]=r[s]);return e};const Tx=class ZT extends Ae{constructor(t={}){t=tu(tu({},ZT.defaultOptions),t);const e=Wt.from({vertex:{source:Jl,entryPoint:"mainVertex"},fragment:{source:Jl,entryPoint:"mainFragment"}}),s=Yt.from({vertex:bs,fragment:xx,name:"noise-filter"}),i=t,{noise:n,seed:o}=i,a=ZR(i,["noise","seed"]);super(qR(tu({},a),{gpuProgram:e,glProgram:s,resources:{noiseUniforms:new At({uNoise:{value:1,type:"f32"},uSeed:{value:1,type:"f32"}})}})),this.noise=n,this.seed=o!=null?o:Math.random()}get noise(){return this.resources.noiseUniforms.uniforms.uNoise}set noise(t){this.resources.noiseUniforms.uniforms.uNoise=t}get seed(){return this.resources.noiseUniforms.uniforms.uSeed}set seed(t){this.resources.noiseUniforms.uniforms.uSeed=t}};Tx.defaultOptions={noise:.5};let QR=Tx;var Sx=`in vec2 vMaskCoord;
 in vec2 vTextureCoord;
@@ -1353,7 +1353,7 @@ uniform mat3 uFilterMatrix;
 vec4 filterVertexPosition(  vec2 aPosition )
 {
     vec2 position = aPosition * uOutputFrame.zw + uOutputFrame.xy;
-
+       
     position.x = position.x * (2.0 / uOutputTexture.x) - 1.0;
     position.y = position.y * (2.0*uOutputTexture.z / uOutputTexture.y) - uOutputTexture.z;
 
@@ -1368,7 +1368,7 @@ vec2 filterTextureCoord(  vec2 aPosition )
 vec2 getFilterCoord( vec2 aPosition )
 {
     return  ( uFilterMatrix * vec3( filterTextureCoord(aPosition), 1.0)  ).xy;
-}
+}   
 
 void main(void)
 {
@@ -2170,7 +2170,7 @@ varying vec2 vUV;
 varying vec4 vColor;
 
 vec2 roundPixels(vec2 position, vec2 targetSize)
-{
+{       
     return (floor(((position * 0.5 + 0.5) * targetSize) + 0.5) / targetSize) * 2.0 - 1.0;
 }
 
@@ -2224,7 +2224,7 @@ fn mainVertex(
   @location(3) aColor: vec4<f32>,
   @location(4) aRotation: f32,
 ) -> VSOutput {
-
+  
    let v = vec2(
        aVertex.x * cos(aRotation) - aVertex.y * sin(aRotation),
        aVertex.x * sin(aRotation) + aVertex.y * cos(aRotation)
@@ -2253,7 +2253,7 @@ fn mainFragment(
 ) -> @location(0) vec4<f32> {
 
     var sample = textureSample(uTexture, uSampler, uv) * color;
-
+   
     return sample;
 }`;class tT extends ie{constructor(){const t=Yt.from({vertex:J1,fragment:Q1}),e=Wt.from({fragment:{source:gc,entryPoint:"mainFragment"},vertex:{source:gc,entryPoint:"mainVertex"}});super({glProgram:t,gpuProgram:e,resources:{uTexture:B.WHITE.source,uSampler:new te({}),uniforms:{uTranslationMatrix:{value:new D,type:"mat3x3<f32>"},uColor:{value:new tt(16777215),type:"vec4<f32>"},uRound:{value:1,type:"f32"},uResolution:{value:[0,0],type:"vec2<f32>"}}}})}}class Qs{constructor(t,e){this.state=Kt.for2d(),this.localUniforms=new At({uTranslationMatrix:{value:new D,type:"mat3x3<f32>"},uColor:{value:new Float32Array(4),type:"vec4<f32>"},uRound:{value:1,type:"f32"},uResolution:{value:[0,0],type:"vec2<f32>"}}),this.renderer=t,this.adaptor=e,this.defaultShader=new tT,this.state=Kt.for2d(),this._managedContainers=new Lt({renderer:t,type:"renderable",name:"particleContainer"})}validateRenderable(t){return!1}addRenderable(t,e){this.renderer.renderPipes.batch.break(e),e.add(t)}getBuffers(t){return t._gpuData[this.renderer.uid]||this._initBuffer(t)}_initBuffer(t){return t._gpuData[this.renderer.uid]=new Z1({size:t.particleChildren.length,properties:t._properties}),this._managedContainers.add(t),t._gpuData[this.renderer.uid]}updateRenderable(t){}execute(t){const e=t.particleChildren;if(e.length===0)return;const s=this.renderer,i=this.getBuffers(t);t.texture||(t.texture=e[0].texture);const n=this.state;i.update(e,t._childrenDirty),t._childrenDirty=!1,n.blendMode=Mr(t.groupBlendMode,t.texture._source);const o=this.localUniforms.uniforms,a=o.uTranslationMatrix;t.worldTransform.copyTo(a);const l=s.globalUniforms.globalUniformData;a.tx-=l.offset.x,a.ty-=l.offset.y,a.prepend(l.projectionMatrix),o.uResolution=l.resolution,o.uRound=s._roundPixels|t._roundPixels;const u=t.groupColorAlpha,h=l.worldColor,c=(u>>>24)*(h>>>24)/255|0,d=be(u&16777215,h&16777215);zr((c<<24|d)>>>0,o.uColor,0),this.adaptor.execute(this,t)}destroy(){this._managedContainers.destroy(),this.renderer=null,this.defaultShader&&(this.defaultShader.destroy(),this.defaultShader=null)}}Qs.extension={type:[T.CanvasPipes],name:"particle"};class _c extends Qs{constructor(t){super(t,new Y1)}}_c.extension={type:[T.CanvasPipes],name:"particle"};class eT{execute(t,e){const s=t.state,i=t.renderer,n=e.shader||t.defaultShader;n.resources.uTexture=e.texture._source,n.resources.uniforms=t.localUniforms;const o=i.gl,a=t.getBuffers(e);i.shader.bind(n),i.state.set(s),i.geometry.bind(a.geometry,n.glProgram);const l=a.geometry.indexBuffer.data.BYTES_PER_ELEMENT===2?o.UNSIGNED_SHORT:o.UNSIGNED_INT;o.drawElements(o.TRIANGLES,e.particleChildren.length*6,l,0)}}class xc extends Qs{constructor(t){super(t,new eT)}}xc.extension={type:[T.WebGLPipes],name:"particle"};class rT{execute(t,e){const s=t.renderer,i=e.shader||t.defaultShader;i.groups[0]=s.renderPipes.uniformBatch.getUniformBindGroup(t.localUniforms,!0),i.groups[1]=s.texture.getTextureBindGroup(e.texture);const n=t.state,o=t.getBuffers(e);s.encoder.draw({geometry:o.geometry,shader:e.shader||t.defaultShader,state:n,size:e.particleChildren.length*6})}}class vc extends Qs{constructor(t){super(t,new rT)}}vc.extension={type:[T.WebGPUPipes],name:"particle"};var xF=Object.defineProperty,sT=Object.getOwnPropertySymbols,vF=Object.prototype.hasOwnProperty,bF=Object.prototype.propertyIsEnumerable,iT=(r,t,e)=>t in r?xF(r,t,{enumerable:!0,configurable:!0,writable:!0,value:e}):r[t]=e,nT=(r,t)=>{for(var e in t||(t={}))vF.call(t,e)&&iT(r,e,t[e]);if(sT)for(var e of sT(t))bF.call(t,e)&&iT(r,e,t[e]);return r};const oT=class Ic{constructor(t){if(t instanceof B)this.texture=t,gi(this,Ic.defaultOptions,{});else{const e=nT(nT({},Ic.defaultOptions),t);gi(this,e,{})}}get alpha(){return this._alpha}set alpha(t){this._alpha=Math.min(Math.max(t,0),1),this._updateColor()}get tint(){return ye(this._tint)}set tint(t){this._tint=tt.shared.setValue(t!=null?t:16777215).toBgrNumber(),this._updateColor()}_updateColor(){this.color=this._tint+((this._alpha*255|0)<<24)}};oT.defaultOptions={anchorX:0,anchorY:0,x:0,y:0,scaleX:1,scaleY:1,rotation:0,tint:16777215,alpha:1};let yF=oT;const bc={vertex:{attributeName:"aVertex",format:"float32x2",code:`
             const texture = p.texture;
