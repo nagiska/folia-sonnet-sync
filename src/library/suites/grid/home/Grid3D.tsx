@@ -7,6 +7,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { SongResult, LocalSong, LocalPlaylist, LocalLibraryGroup, Theme, type StatusMessage } from '../../../../types';
 import LocalGrid3DView from './LocalGrid3DView';
 import NavidromeGrid3DView from './NavidromeGrid3DView';
+import { useGrid3DTabKeys } from './useGrid3DTabKeys';
 import DesktopGrid3DSurface from './DesktopGrid3DSurface';
 import OnlineProviderSwitcher from '../account/OnlineProviderSwitcher';
 import OnlineProviderConnectPanel from '../account/OnlineProviderConnectPanel';
@@ -27,7 +28,7 @@ import { useLibraryHomeDirectory } from '../../../core/bindings/useLibraryHomeDi
 import { useLibraryHomeListRegistration, useLibraryHomeTabsRegistration } from '../../../core/bindings/useLibraryHomeSurfaceRegistration';
 import { useLibraryAccountProviders } from '../../../core/bindings/useLibraryAccount';
 import { resolveProviderSelectLabel } from '../../../core/model/accountRules';
-import { translateHomeMessage } from '../../../core/model/homeSources';
+import { cycleIndex, translateHomeMessage } from '../../../core/model/homeSources';
 
 // src/library/suites/grid/home/Grid3D.tsx
 // Glassmorphic interactive desktop home view replacing the legacy 3D carousel.
@@ -303,6 +304,17 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
         });
     };
 
+    // Tab / Shift+Tab 在可用页签之间循环，切完把焦点交回海报轨道，和点胶囊一样。
+    useGrid3DTabKeys({
+        isActive: isInteractive,
+        onCycleTab: delta => {
+            const next = cycleIndex(homeTabs, homeTabs.findIndex(tab => tab.key === homeViewTab), delta, tab => !tab.disabledReason);
+            if (next < 0 || homeTabs[next].key === homeViewTab) return;
+            setHomeViewTab(homeTabs[next].key);
+            focusActiveSlider();
+        },
+    });
+
     return (
         <div
             ref={gridRootRef}
@@ -311,7 +323,7 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
         >
 
             {/* Main Header Container (Fades out when sliding/interacting) */}
-            <div className="transition-opacity duration-300 ease-in-out z-20 opacity-100 select-none">
+            <div data-folia-home-header="true" className="transition-opacity duration-300 ease-in-out z-20 opacity-100 select-none">
                 <div className="grid grid-cols-2 md:grid-cols-3 items-center w-full max-w-7xl mx-auto p-4 md:p-8 gap-y-4 md:gap-y-0">
                     {/* Left title and settings */}
                     <div className="flex items-center justify-start order-1 md:order-none">

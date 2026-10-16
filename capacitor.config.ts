@@ -20,10 +20,15 @@ const config: CapacitorConfig = {
       backgroundColor: '#09090b',
       showSpinner: false,
     },
+    SystemBars: {
+      // FoliaWindow owns insets, including older WebViews and keyboard resizing.
+      insetsHandling: 'disable',
+      style: 'DARK',
+    },
     StatusBar: {
       overlaysWebView: true,
-      style: 'LIGHT',
-      backgroundColor: '#09090b',
+      style: 'DARK',
+      backgroundColor: '#00000000',
     },
   },
 };

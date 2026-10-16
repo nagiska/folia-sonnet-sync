@@ -18,6 +18,7 @@ import type {
     OnlineMusicProvider,
     PersonalFmRequestOptions,
     ProviderCatalogEntityKind,
+    LoginSelfCheckResult,
     QrLoginMethod,
     QrLoginState,
 } from '../../types/onlineMusic';
@@ -261,6 +262,16 @@ export const omni = {
         }
     },
 
+    // 扫码失败后的主动自检：没有这个能力的 provider（kugou、bodian、mod 源）回 false / null。
+    // 自检本身出错时照常抛出，由登录会话记进时间线与报告。
+    canRunQrLoginSelfCheck(providerId: OmniProviderId): boolean {
+        return Boolean(requireOnlineMusicProvider(providerId).auth?.canRunQrLoginSelfCheck?.());
+    },
+
+    async runQrLoginSelfCheck(providerId: OmniProviderId): Promise<LoginSelfCheckResult | null> {
+        return await requireOnlineMusicProvider(providerId).auth?.runQrLoginSelfCheck?.() ?? null;
+    },
+
     // 只有明确声明了二维码寿命的 provider 才由前端计时；其余照旧只认后端报出的过期状态。
     getQrTtlMs(providerId: OmniProviderId): number | null {
         const ttlMs = requireOnlineMusicProvider(providerId).auth?.getQrTtlMs?.();
@@ -471,7 +482,18 @@ export const omni = {
     },
 
     async getAudioSource(song: SongResult, quality: AudioQualityPreference): Promise<OmniAudioSource | null> {
-        const source = await (providerForSong(song).playback?.getAudioSource(song, quality) ?? null);
+        const provider = providerForSong(song);
+        let source: OmniAudioSource | null;
+        try {
+            source = await (provider.playback?.getAudioSource(song, quality) ?? null);
+        } catch (error) {
+            // The provider refused (network, auth, entitlement...). An installed audio hook may still
+            // supply a URL; without one, or when it has none, rethrow the very same error instance so
+            // the caller classifies the provider's evidence. Nothing is saved on this path.
+            const rescued = await applyOmniAudioHook(song, null);
+            if (rescued?.url) return rescued;
+            throw error;
+        }
         // Written here rather than at either caller because this is the only moment a provider ever
         // states a track's ReplayGain, and both callers - the prefetch pass and playback itself -
         // may be the one that happens to see it. See getCachedSongReplayGain for what is lost

@@ -24,6 +24,7 @@ import {
 } from '../../../core/model/artistModel';
 import { artistAlbumEntryKey, artistSongEntryKey } from '../../../core/model/artistSurface';
 import { PolaroidCard } from '../shared/PolaroidCard';
+import { useGridStayPlayback } from '../shared/useGridStayPlayback';
 import { HEX_CARD_CENTER_SCALE } from '../shared/hexCardTransform';
 import { squareGridCardBox } from '../shared/gridCardLayout';
 import {
@@ -347,12 +348,18 @@ const ArtistGridView: React.FC<ArtistGridViewProps> = ({
 
     // 歌手数据：宿主的歌手资源。专辑的后台分页在拖拽中先暂存，松手后提交（与集合网格同一道门）。
     const { snapshot, flushHeld } = useArtistResourceState(resource, { holdBackground: () => isDraggingRef.current });
+    // fb3：「留在原处」时热门歌曲卡片上正在播放的那首切换暂停 / 继续（与集合网格同一个规则，见 useGridStayPlayback）。
+    const stayPlayback = useGridStayPlayback(playback.playTrack, playback);
+    const stayPort = useMemo<LibraryPlaybackPort>(
+        () => ({ ...playback, playTrack: stayPlayback.selectTrack }),
+        [playback, stayPlayback.selectTrack],
+    );
     // 筛选词、专辑筛选、能力与动作：与 TUI 歌手页同一份 core 绑定。
     const artistView = useArtistView({
         collection,
         resource,
         snapshot,
-        playback,
+        playback: stayPort,
         declaredActions,
         onEditEntity,
         onOpenAlbum: onSelectAlbum,
@@ -1168,6 +1175,7 @@ const ArtistGridView: React.FC<ArtistGridViewProps> = ({
                                 artistActions.enqueueSong(item.rawTrack);
                             }
                         }}
+                        playbackMark={isSongCard ? stayPlayback.markFor(item.rawTrack) : null}
                     />
                     </motion.div>
                 </div>
@@ -1190,6 +1198,7 @@ const ArtistGridView: React.FC<ArtistGridViewProps> = ({
         focusedIndex,
         artistInfo,
         artistActions,
+        stayPlayback.markFor,
         canPlaySong,
         canEnqueueSong,
         canOpenAlbum,
@@ -1238,7 +1247,7 @@ const ArtistGridView: React.FC<ArtistGridViewProps> = ({
             )}
 
             {/* Header Area */}
-            <div className="absolute top-0 left-0 p-6 z-30 flex items-center gap-4">
+            <div data-folia-safe-top="shift" data-folia-safe-left="shift" className="absolute top-0 left-0 p-6 z-30 flex items-center gap-4">
                 <button
                     // 返回按钮表示看完了（onDone）：宿主清掉浏览会话、让每套 suite 忘掉布局记录，再返回
                     // （Escape 与浏览器后退保留）。P4.5 起这条语义在宿主，不在这里清。
@@ -1271,6 +1280,7 @@ const ArtistGridView: React.FC<ArtistGridViewProps> = ({
                     setShowSidePanel(false);
                     setShowCutInPanel(current => !current);
                 }}
+                data-folia-safe-top="shift"
                 className="group/grid-title absolute left-1/2 top-5 -translate-x-1/2 z-[70] text-center flex flex-col items-center select-none cursor-pointer hover:scale-[1.01] active:scale-98 transition-all px-5 py-2 rounded-2xl backdrop-blur-md"
                 style={{
                     backgroundColor: 'color-mix(in srgb, var(--bg-color) 20%, transparent)',
@@ -1312,6 +1322,8 @@ const ArtistGridView: React.FC<ArtistGridViewProps> = ({
                         if (loadError) artistActions.reload();
                         else if (backgroundLoadFailed) artistActions.retryAlbums();
                     }}
+                    data-folia-safe-top="shift"
+                    data-folia-safe-right="shift"
                     className="absolute right-6 top-5 z-[70] flex items-center gap-2 rounded-full px-3 py-2 text-xs backdrop-blur-md"
                     style={{ backgroundColor: 'color-mix(in srgb, var(--bg-color) 65%, transparent)' }}
                     title={t('playlist.loading')}

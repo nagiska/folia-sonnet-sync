@@ -63,6 +63,7 @@ const VisualizerShell = forwardRef<HTMLDivElement, VisualizerShellProps>(({
 }, ref) => {
     const { t } = useTranslation();
     const [showBackButton, setShowBackButton] = useState(false);
+    const backButtonRef = useRef<HTMLButtonElement>(null);
     const playerPanelGuideHotspotRef = useRef(false);
     const touchGuideHideTimeoutRef = useRef<number | null>(null);
     const resolvedCoverUrl = getSizedCoverUrl(sharedProps?.coverUrl, 1024) || undefined;
@@ -135,7 +136,9 @@ const VisualizerShell = forwardRef<HTMLDivElement, VisualizerShellProps>(({
             onMouseMove={(event) => {
                 // Back button is intentionally hidden most of the time.
                 // Only reveal it near the top-left hot area so it does not pollute the visual field.
-                const nearBackArea = event.clientX <= PLAYER_CHROME_HOTSPOT_SIZE && event.clientY <= PLAYER_CHROME_HOTSPOT_SIZE;
+                const backButton = backButtonRef.current;
+                const nearBackArea = event.clientX <= Math.max(PLAYER_CHROME_HOTSPOT_SIZE, (backButton?.offsetLeft ?? 0) + 80)
+                    && event.clientY <= Math.max(PLAYER_CHROME_HOTSPOT_SIZE, (backButton?.offsetTop ?? 0) + 80);
                 if (nearBackArea !== showBackButton) {
                     setShowBackButton(nearBackArea);
                 }
@@ -162,6 +165,7 @@ const VisualizerShell = forwardRef<HTMLDivElement, VisualizerShellProps>(({
         >
             {resolvedOnBack && (
                 <motion.button
+                    ref={backButtonRef}
                     type="button"
                     aria-label={t('ui.backToHome')}
                     initial={false}
@@ -175,6 +179,8 @@ const VisualizerShell = forwardRef<HTMLDivElement, VisualizerShellProps>(({
                         event.stopPropagation();
                         resolvedOnBack();
                     }}
+                    data-folia-safe-top="shift"
+                    data-folia-safe-left="shift"
                     className="absolute top-6 left-6 z-30 h-10 w-10 rounded-full flex items-center justify-center transition-colors backdrop-blur-md bg-black/20 hover:bg-white/10 text-white/60 pointer-events-auto"
                     style={{ pointerEvents: isBackButtonVisible ? 'auto' : 'none' }}
                 >

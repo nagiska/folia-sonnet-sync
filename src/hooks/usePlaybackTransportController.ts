@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from 'react';
 import { PlayerState } from '../types';
 import { setStatusMessage as setStatusMsg } from '../stores/useStatusMessageStore';
@@ -8,6 +8,8 @@ import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { currentTime } from '../stores/motionSignals';
 import { markProgrammaticPause, playbackFade, type PlaybackFadeSettleReason } from '../services/playbackFade';
 import { getPlaybackSongKey } from '../utils/appPlaybackGuards';
+import { getPlaybackFailureMessage, isPlaybackFailureStatus } from '../services/playbackRecovery/playbackFailurePolicy';
+import type { OnlineRecoveryOptions, OnlineRecoveryResult, PlaybackFailure } from '../types/playbackFailure';
 
 // src/hooks/usePlaybackTransportController.ts
 
@@ -26,11 +28,7 @@ type UsePlaybackTransportControllerParams = {
     syncOutputGain: (targetVolume: number, smoothing?: number) => void;
     getTargetPlaybackVolume: () => number;
     shouldRefreshCurrentOnlineAudioSource: () => boolean;
-    recoverOnlinePlaybackSource: (options: {
-        failedSrc?: string | null;
-        resumeAt?: number;
-        autoplay: boolean;
-    }) => Promise<boolean>;
+    recoverOnlinePlaybackSource: (options: OnlineRecoveryOptions) => Promise<OnlineRecoveryResult>;
     getSyntheticStageLyricsTime: () => number;
     syncStageLyricsClock: (timeSec: number, endTimeSec: number, nextPlayerState: PlayerState, startTimeSec?: number) => void;
     /**
@@ -69,11 +67,19 @@ export function usePlaybackTransportController({
     const activePlaybackContext = usePlaybackStore(state => state.activePlaybackContext);
     const audioSrc = usePlaybackStore(state => state.audioSrc);
     const duration = usePlaybackStore(state => state.duration);
+    const transportRevision = useRef(0);
+    const wantsPlayback = useRef(false);
+    useEffect(() => () => {
+        transportRevision.current++;
+        wantsPlayback.current = false;
+    }, []);
 
     const resumePlayback = useCallback(async () => {
         if (isNowPlayingStageActive) {
             return;
         }
+        const revision = ++transportRevision.current;
+        wantsPlayback.current = true;
 
         if (activePlaybackContext === 'stage' && stageActiveEntryKind === 'lyrics' && !audioSrc) {
             const currentSyntheticTime = getSyntheticStageLyricsTime();
@@ -96,51 +102,78 @@ export function usePlaybackTransportController({
             return;
         }
 
-        if (!audioRef.current) {
+        const audio = audioRef.current;
+        if (!audio) {
             return;
         }
+        // A pause does not cancel source loading, but it must cancel an older
+        // asynchronous resume. Store notifications alone cannot identify that
+        // stale PLAYING event once a caller has already observed PAUSED.
+        const source = usePlaybackStore.getState().audioSrc;
+        const isSameSource = () => audioRef.current === audio && usePlaybackStore.getState().audioSrc === source;
+        const isCurrent = () => revision === transportRevision.current && isSameSource();
+        // A pending refresh can still supply the source after a pause. Its autoplay
+        // decision follows the latest transport intent, including a later resume.
+        const shouldAutoplay = () => wantsPlayback.current && isSameSource();
 
         setupAudioAnalyzer();
         if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-            await audioContextRef.current.resume();
+            try {
+                await audioContextRef.current.resume();
+            } catch (error) {
+                if (!isCurrent()) return;
+                throw error;
+            }
         }
+        if (!isCurrent()) return;
 
         syncOutputGain(getTargetPlaybackVolume(), 0);
+        // A failed TTL refresh still falls back to the old URL below, as before. Its reason is kept
+        // so that, should that play fail too, the message names it rather than a generic error.
+        let refreshFailure: PlaybackFailure | null = null;
         if (shouldRefreshCurrentOnlineAudioSource()) {
             const refreshed = await recoverOnlinePlaybackSource({
-                failedSrc: audioRef.current.currentSrc || audioSrc,
-                resumeAt: audioRef.current.currentTime,
+                failedSrc: audio.currentSrc || audioSrc,
+                resumeAt: audio.currentTime,
                 autoplay: true,
+                shouldAutoplay,
             });
 
-            if (refreshed) {
+            if (!isCurrent() || refreshed.status === 'recovered') {
                 return;
             }
+            refreshFailure = refreshed.status === 'failed' ? refreshed.failure : null;
         }
 
         // Silent first, ramped up once play() has really started. Null when the fade is off or
         // there is no Web Audio graph, and the two calls below are then no-ops. Only for an element
         // that is actually stopped: pressing play on one that is already sounding must not dip it.
-        const fadeToken = audioRef.current.paused || audioRef.current.ended
+        const fadeToken = audio.paused || audio.ended
             ? playbackFade.prepareFadeIn()
             : null;
         try {
-            await audioRef.current.play();
+            await audio.play();
+            if (!isCurrent()) { playbackFade.abortFadeIn(fadeToken); return; }
             playbackFade.runFadeIn(fadeToken);
             setPlayerState(PlayerState.PLAYING);
+            // Playback is back, so a leftover playback-failure toast goes too: its two buttons are
+            // retry and skip, with no close control. Countdowns and every other toast stay.
+            setStatusMsg(prev => (isPlaybackFailureStatus(prev) ? null : prev));
         } catch (error) {
             playbackFade.abortFadeIn(fadeToken);
+            if (!isCurrent()) return;
             const recovered = await recoverOnlinePlaybackSource({
-                failedSrc: audioRef.current.currentSrc || audioSrc,
-                resumeAt: audioRef.current.currentTime,
+                failedSrc: audio.currentSrc || audioSrc,
+                resumeAt: audio.currentTime,
                 autoplay: true,
+                shouldAutoplay,
             });
 
-            if (recovered) {
+            if (!isCurrent() || recovered.status === 'recovered') {
                 return;
             }
 
-            if (!audioRef.current.paused && !audioRef.current.ended) {
+            if (!audio.paused && !audio.ended) {
                 setPlayerState(PlayerState.PLAYING);
                 return;
             }
@@ -151,7 +184,15 @@ export function usePlaybackTransportController({
                 return;
             }
 
-            setStatusMsg({ type: 'error', text: t('status.playbackError') });
+            const failure = recovered.status === 'failed' ? recovered.failure : refreshFailure;
+            const failureMessage = failure ? getPlaybackFailureMessage(failure) : null;
+            const text = failureMessage
+                ? (failureMessage.params ? t(failureMessage.key, failureMessage.params) : t(failureMessage.key))
+                : t('status.playbackError');
+            // 已有带「重试 / 跳过」的常驻失败提示时保留它：它已写明原因，而且没有关闭按钮，「重试」是唯一的强制刷新入口。
+            // 在出错的元素上按播放（play() 以 NotSupportedError 拒绝、刷新被按文件去重）或与 onError 共用同一个恢复任务时，
+            // 这条 3 秒后消失的提示都会把它连同按钮一起盖掉。
+            setStatusMsg(prev => (isPlaybackFailureStatus(prev) ? prev : { type: 'error', text }));
             setPlayerState(PlayerState.PAUSED);
             throw error;
         }
@@ -161,6 +202,8 @@ export function usePlaybackTransportController({
         if (isNowPlayingStageActive) {
             return;
         }
+        transportRevision.current++;
+        wantsPlayback.current = false;
 
         if (activePlaybackContext === 'stage' && stageActiveEntryKind === 'lyrics' && !audioSrc) {
             const currentSyntheticTime = getSyntheticStageLyricsTime();

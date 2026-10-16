@@ -15,6 +15,7 @@ export type ProbeRequest = {
 
 export type ProbeCallKind =
     | 'playSong'
+    | 'openStagePlayer'
     | 'playAll'
     | 'addAllToQueue'
     | 'addSongToQueue'
@@ -28,7 +29,26 @@ export type ProbeCallKind =
     // 以下几种只有首页探针会记：打开集合（宿主收到的描述）、经由探针替身的服务调用、搜索提交。
     | 'openCollection'
     | 'service'
-    | 'searchCommitted';
+    | 'searchCommitted'
+    // 回到播放页（宿主的 onBackToPlayer：bravais 左上角的隐藏式返回、首页缝里的「回到播放页」）。
+    | 'backToPlayer'
+    // fb3：暂停 / 继续（宿主的播放开关：正在播放的卡片上的播放键）与进入播放视图（bravais 聚焦卡的「进入」）。
+    | 'togglePlayback'
+    | 'enterPlaybackView'
+    // bravais 右下角工具面板：前往 Lattice（宿主的 onOpenLattice）、队列洗牌 / 生成主题 / 音量预览（墙面工具宿主 wallToolsHost）。
+    | 'openLattice'
+    | 'shuffleQueue'
+    | 'generateTheme'
+    | 'previewVolume'
+    // 墙面工具宿主的其余动作：前往播放页与队列编辑（队列浮岛用；ids 是歌的 playback key，detail 是下标 / 歌单名）。
+    | 'openPlayer'
+    | 'playQueueSong'
+    | 'playQueueSongNext'
+    | 'moveQueueSongToEnd'
+    | 'removeQueueSong'
+    | 'moveQueueSong'
+    | 'clearQueue'
+    | 'saveQueueAsPlaylist';
 
 export type ProbeCall = {
     seq: number;

@@ -71,8 +71,12 @@ export interface Line {
   isChorus?: boolean;
   chorusEffect?: 'bars' | 'circles' | 'beams';
   // User-saved fine word boundaries for fullText, baked in upstream by the lyric setter.
-  // join('') must equal fullText. When present it wins over Intl.Segmenter word segmentation.
+  // join('') must equal fullText. When present it wins over every automatic segmentation.
   wordSegments?: string[];
+  // icu-folia's automatic word boundaries for fullText (utils/lyrics/icuFolia), baked in by the
+  // lyric setter once its engines have loaded. Used when there is no wordSegments; absent until
+  // then, and the line falls back to plain Intl.Segmenter.
+  autoWordSegments?: string[];
 }
 
 export interface LyricData {
@@ -1167,7 +1171,8 @@ export interface NeteasePlaylist {
   trackUpdateTime: number;
   creator: NeteaseUser;
   description?: string;
-  specialType?: 'cloud';
+  // 'cloud' 是本地合成的云盘卡；数字是网易云 `/user/playlist` 原样给的（0 普通歌单，5「我喜欢的音乐」）。
+  specialType?: 'cloud' | number;
 }
 
 export interface Artist {
@@ -1307,6 +1312,7 @@ export interface LocalSong {
   matchedIsPureMusic?: boolean;
   matchedLyricsSongId?: number | string; // Provider-scoped ID used for the saved lyric result
   hasManualLyricSelection?: boolean;
+  markedPureMusic?: boolean; // User marked the song as instrumental: automatic lyric matching never runs for it
   folderName?: string; // Name of the folder if imported via folder import
   noAutoMatch?: boolean; // If true, do not attempt to auto-match metadata
   matchedLyricsSource?: LyricProviderSource;

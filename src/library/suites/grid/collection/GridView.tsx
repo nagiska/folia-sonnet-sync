@@ -11,6 +11,7 @@ import { getSongCoverUrl } from '../../../../services/onlineMusic/songMetadata';
 import { colorWithAlpha } from '../../../../components/visualizer/colorMix';
 import { useFoliaHexViewport } from '../shared/useFoliaHexViewport';
 import { PolaroidCard, type GridItem } from '../shared/PolaroidCard';
+import type { GridPlaybackMark } from '../shared/useGridStayPlayback';
 import { squareGridCardBox } from '../shared/gridCardLayout';
 import {
     gridViewStateStorageKey,
@@ -82,6 +83,8 @@ interface GridViewProps {
     onSelectTrack?: (track: SongResult, queue: SongResult[]) => void;
     onSelectCollection?: (item: any) => void;
     onAddTrackToQueue?: (track: SongResult) => void;
+    /** fb3：「留在原处」时正在播放的那首的卡片画成暂停 / 继续（useGridStayPlayback.markFor）；不给就是普通的播放键。 */
+    trackPlaybackMark?: (track: SongResult | undefined) => GridPlaybackMark | null;
     isLoading?: boolean;
     theme: Theme;
     isDaylight: boolean;
@@ -227,6 +230,7 @@ export const GridView: React.FC<GridViewProps> = ({
     onSelectTrack,
     onSelectCollection,
     onAddTrackToQueue,
+    trackPlaybackMark,
     isLoading = false,
     theme,
     isDaylight,
@@ -1159,6 +1163,7 @@ export const GridView: React.FC<GridViewProps> = ({
                                     }
                                 }}
                                 isFocused={idx === focusedIndex}
+                                playbackMark={mode === 'tracks' ? trackPlaybackMark?.(item.rawTrack) ?? null : null}
                             />
                         </div>
                         <div
@@ -1197,6 +1202,7 @@ export const GridView: React.FC<GridViewProps> = ({
         onSelectArtist,
         onSelectAlbum,
         onAddTrackToQueue,
+        trackPlaybackMark,
         canMatchSong,
         mutations,
         handleRemoveTrack,
@@ -1465,6 +1471,8 @@ export const GridView: React.FC<GridViewProps> = ({
                 // 返回按钮表示看完了（onDone）：宿主清掉浏览会话、让每套 suite 忘掉布局记录（网格的 sessionStorage
                 // 记录经 entry 的 layout.forget），再返回。Escape 与浏览器后退保留（onBack）。P4.5 起不在这里清。
                 onClick={onDone}
+                data-folia-safe-top="shift"
+                data-folia-safe-left="shift"
                 className="absolute left-6 top-5 w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg hover:scale-105 active:scale-95 z-[70]"
                 style={{
                     backgroundColor: isDaylight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.08)',
@@ -1479,6 +1487,8 @@ export const GridView: React.FC<GridViewProps> = ({
                     type="button"
                     onClick={resumeBackgroundSync}
                     disabled={!backgroundLoadError}
+                    data-folia-safe-top="shift"
+                    data-folia-safe-right="shift"
                     className="absolute right-6 top-5 z-[70] flex items-center gap-2 rounded-full px-3 py-2 text-xs tabular-nums backdrop-blur-md disabled:cursor-default"
                     style={{ backgroundColor: 'color-mix(in srgb, var(--bg-color) 65%, transparent)' }}
                     title={backgroundLoadError
@@ -1497,6 +1507,7 @@ export const GridView: React.FC<GridViewProps> = ({
                     if (!hasCutInPanel) return;
                     setShowCutInPanel(!showCutInPanel);
                 }}
+                data-folia-safe-top="shift"
                 className={`group/grid-title absolute left-1/2 top-5 -translate-x-1/2 z-[70] text-center flex flex-col items-center select-none transition-all px-5 py-2 rounded-2xl backdrop-blur-md ${hasCutInPanel ? 'cursor-pointer hover:scale-[1.01] active:scale-98' : ''}`}
                 style={{
                     backgroundColor: 'color-mix(in srgb, var(--bg-color) 20%, transparent)',
@@ -1600,6 +1611,9 @@ export const GridView: React.FC<GridViewProps> = ({
                             animate={{ opacity: 1, x: 0, scale: 1 }}
                             exit={{ opacity: 0, x: -60, scale: 0.95 }}
                             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                            data-folia-safe-top="shift"
+                            data-folia-safe-bottom="shift"
+                            data-folia-safe-left="shift"
                             className="absolute left-6 top-24 w-80 rounded-3xl z-[80] overflow-y-auto overscroll-contain hide-scrollbar flex flex-col p-6 shadow-2xl border backdrop-blur-2xl pointer-events-auto theme-glass-panel"
                             style={{
                                 bottom: bottomBarPanelBottomPx,
