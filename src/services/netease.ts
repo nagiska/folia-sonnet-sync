@@ -1,6 +1,7 @@
 import { NeteaseUser, NeteasePlaylist, NoCopyrightRecommendation, SongPrivilege, SongResult } from "../types";
 import { readProviderSessionValue, removeProviderSessionValue, writeProviderSessionValue } from './onlineMusic/providerStorage';
 import type { PersonalFmRequestOptions } from '../types/onlineMusic';
+import { fetchNeteaseResponse } from './onlineMusic/neteaseHttp';
 import {
   isNeteaseRouteMissingResponse,
   NETEASE_API_BASE_MISSING,
@@ -148,7 +149,7 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}) => {
       let anonCookie = readProviderSessionValue('netease', 'anonymous_cookie', ['netease_anonymous_cookie']);
       if (!anonCookie && !endpoint.startsWith('/register/anonimous')) {
         try {
-          const anonRes = await fetch(`${base}/register/anonimous?timestamp=${Date.now()}`).then(r => r.json());
+          const anonRes = await fetchNeteaseResponse(`${base}/register/anonimous?timestamp=${Date.now()}`).then(r => r.json());
           if (anonRes && typeof anonRes.cookie === 'string' && anonRes.cookie) {
             anonCookie = anonRes.cookie;
             writeProviderSessionValue('netease', 'anonymous_cookie', anonRes.cookie);
@@ -168,9 +169,9 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}) => {
   }
 
   const target = endpoint.split('?')[0];
-  let res: Response;
+  let res: Awaited<ReturnType<typeof fetchNeteaseResponse>>;
   try {
-    res = await fetch(finalUrl, { ...defaultOptions, credentials: 'include' });
+    res = await fetchNeteaseResponse(finalUrl, { ...defaultOptions, credentials: 'include' });
   } catch (error) {
     // 连 API 本身都没连上（本地后端退出、远端 API 不可达），不是网易上游的失败：说清是哪个接口，原始错误挂在 cause 上。
     // networkFailure 标签供 provider 归为 network；message 原文不变，二维码诊断依赖它。
