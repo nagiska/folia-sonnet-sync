@@ -101,6 +101,8 @@ export type LibraryHomeRadioFeed = {
     /** 未声明时沿用旧 feed 的支持语义；默认环境装配会明确提供实际 provider 能力。 */
     supportsDailySongs?: boolean;
     recommended: ProviderCollection[];
+    /** 有一块没读到（按空显示）：资源不记成读过，下次进电台页再读。 */
+    partial?: true;
 };
 
 /**
@@ -321,4 +323,10 @@ export interface LibraryHomeTabsHandle {
     getState(): LibraryHomeTabsState;
     /** 切页签（不存在或不可用时返回 false）。 */
     setTab(tab: LibraryHomeTabKey): boolean;
+    /**
+     * 首页自己的 F6 / Shift+F6 页签循环（bravais），含宿主的扩展页签：从当前项（开着的扩展页签，没有就是原生的当前页签）
+     * 往后 / 往前切一个，没得切时返回 false。宿主的整页页面（模组的首页页面）盖住首页、首页的按键监听让出时，
+     * 页面里按同一对键转交到这里，循环不会在进入页面之后断掉。没有这个循环键的 suite 不提供。
+     */
+    cycleTab?(delta: 1 | -1): boolean;
 }

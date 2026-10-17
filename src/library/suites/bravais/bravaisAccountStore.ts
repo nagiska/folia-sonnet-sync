@@ -7,6 +7,8 @@ import type { BravaisAccountForm } from './bravaisAccountModel';
 // 当前是哪一层无关（集合层开着时也可能来一个待确认切换），所以 surface 把投影好的表单与动作放在这里，stage 读它决定缝的
 // 开口与内容（bravaisSeamTarget 的 login / confirm 变体），缝在表单显示且可交互时挂 data-folia-keyboard-window。
 // 模块作用域：surface 与 stage 各自 lazy 加载、先后挂载都没关系；surface 卸载（换 suite、首页整个藏起）时清空。
+// 反方向 stage 也往这里交一个值：它此刻可不可交互（stageInteractive）。表单画在 stage 的缝里，stage 不可交互时（例如宿主的
+// 整页页面——模组的首页页面——盖住首页、整层 inert）表单看不见，surface 据此不让它接管键盘。
 
 /** 表单里的动作（surface 给，身份稳定；每个都直接调账户 controller，不 await 它的事务）。 */
 export type BravaisAccountActions = {
@@ -27,6 +29,11 @@ type BravaisAccountState = {
     actions: BravaisAccountActions | null;
     /** 首页外壳此刻可交互：只有这时缝才接管键盘。 */
     isInteractive: boolean;
+    /**
+     * stage 此刻可交互（stage 交来，卸载时复位为 false）：宿主的整页页面盖住首页时为 false。surface 交来的 isInteractive
+     * 已经并上了它（画表单的墙不可交互时表单看不见），读 isInteractive 的地方不必再看它。
+     */
+    stageInteractive: boolean;
     /** 缝里此刻渲染着的表单元素（判断焦点是不是在表单自己的按钮上）。 */
     element: HTMLElement | null;
 };
@@ -35,6 +42,7 @@ export const useBravaisAccountStore = create<BravaisAccountState>(() => ({
     form: null,
     actions: null,
     isInteractive: false,
+    stageInteractive: false,
     element: null,
 }));
 
@@ -42,6 +50,11 @@ export const publishBravaisAccount = (form: BravaisAccountForm | null, actions: 
     const state = useBravaisAccountStore.getState();
     if (state.form === form && state.actions === actions && state.isInteractive === isInteractive) return;
     useBravaisAccountStore.setState({ form, actions, isInteractive });
+};
+
+/** stage 交出自己此刻可不可交互（stage 卸载时交 false）。 */
+export const setBravaisAccountStageInteractive = (stageInteractive: boolean) => {
+    if (useBravaisAccountStore.getState().stageInteractive !== stageInteractive) useBravaisAccountStore.setState({ stageInteractive });
 };
 
 export const setBravaisAccountElement = (element: HTMLElement | null) => {

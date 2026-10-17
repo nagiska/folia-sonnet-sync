@@ -154,6 +154,26 @@ export const formatFoliumParamNumber = (value: number) => {
     return value.toFixed(2);
 };
 
+/*
+ * The option a select field shows. A stored value outside the options (an old
+ * value after the mod renamed its choices, or a defaultValue the mod never
+ * listed — sanitize only checks it is a string) falls back to the default when
+ * that is listed, else to the first option. Display only: the stored value is
+ * left alone until the user picks something.
+ */
+export const resolveFoliumSelectDisplayValue = (
+    param: Pick<FoliumParam, 'defaultValue' | 'options'>,
+    value: unknown,
+): string => {
+    const options = param.options ?? [];
+    const listed = (candidate: unknown): candidate is string => (
+        typeof candidate === 'string' && options.some((option) => option.value === candidate)
+    );
+    if (listed(value)) return value;
+    if (listed(param.defaultValue)) return param.defaultValue;
+    return options[0]?.value ?? '';
+};
+
 /** Resolves a label map for the active language with a deterministic fallback chain. */
 export const resolveFoliumLabel = (
     label: Record<string, string | undefined> | undefined,

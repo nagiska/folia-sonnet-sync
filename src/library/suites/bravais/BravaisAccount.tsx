@@ -5,7 +5,7 @@ import { useLibraryAccountLogin, useLibraryAccountPendingSwitch } from '../../co
 import { useExclusiveKeyLayer } from '../../../hooks/useExclusiveKeyLayer';
 import { buildQrLoginIssueUrl } from '../../../utils/qrLoginDiagnosticReport';
 import { resolveBravaisAccountForm, type BravaisAccountForm, type BravaisLoginFeatures } from './bravaisAccountModel';
-import { bravaisAccountElementRef, publishBravaisAccount, type BravaisAccountActions } from './bravaisAccountStore';
+import { bravaisAccountElementRef, publishBravaisAccount, useBravaisAccountStore, type BravaisAccountActions } from './bravaisAccountStore';
 
 // src/library/suites/bravais/BravaisAccount.tsx
 // bravais 的 account surface（B10，设计稿 §10.7）：登录与切换确认都在缝里完成，不弹浮层、不接 accountLayerRef（宿主给的
@@ -15,6 +15,7 @@ import { bravaisAccountElementRef, publishBravaisAccount, type BravaisAccountAct
 // - 按键：表单显示、且首页外壳可交互时，独占不带修饰键的按键（useExclusiveKeyLayer）。Esc 先撤销表单态（关闭登录 /
 //   取消切换）；Enter 是此刻的主动作（确认切换；登录态里重试或重启后端），焦点在表单自己的按钮上时交还给按钮；
 //   ←→↑↓ 在登录方式之间移动焦点（QQ 两步式），Enter 选它。
+//   画表单的 stage 也要可交互：宿主的整页页面（模组的首页页面）盖住首页时表单看不见，不接管（stageInteractive）。
 // - 失败帮助（account-login-diagnostics）：诊断报告等用户点了才生成；反馈先把报告放进剪贴板，再开 GitHub 的 issue 页。
 // - 确认后立即翻回：controller 同步清掉待确认请求，不 await confirmSwitch 的事务（清理、刷新在后台走完）。
 // - 寿命：controller 属于 App，换 suite 只换这个组件——登录会话与待确认切换都保持，换回来接着显示。卸载时清空 store
@@ -90,14 +91,19 @@ const BravaisAccount: React.FC<LibraryAccountSurfaceProps> = ({ account, isInter
         cancel: requestId => void accountRef.current.cancelSwitch(requestId),
     }), []);
 
+    // 表单画在 stage 的缝里：宿主的整页页面（模组的首页页面）盖住首页时 stage 不可交互、表单看不见，首页外壳却仍可交互
+    // （页面就在首页上）。这时不接管键盘，否则页面里打字被吞、Enter 会确认看不见的平台切换；表单留着，页面关掉后照常接管。
+    const stageInteractive = useBravaisAccountStore(state => state.stageInteractive);
+    const interactive = isInteractive && stageInteractive;
+
     // 布局阶段交出去：同一次提交里 stage 就能按它开缝，不先画一帧旧的开口。
     useLayoutEffect(() => {
-        publishBravaisAccount(form, actions, isInteractive);
-    }, [actions, form, isInteractive]);
+        publishBravaisAccount(form, actions, interactive);
+    }, [actions, form, interactive]);
     useEffect(() => () => publishBravaisAccount(null, null, false), []);
 
     useExclusiveKeyLayer({
-        isActive: form !== null && isInteractive,
+        isActive: form !== null && interactive,
         containerRef: bravaisAccountElementRef,
         onKey: key => {
             if (!form) return false;

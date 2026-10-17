@@ -12,9 +12,9 @@
 // loaded mod shares the renderer with the app UI and could otherwise drive its
 // own approval.
 //
-// Official signatures (modSignature.cjs) only label a mod as verified, unsigned
-// or invalid, in that dialog and in the mods panel. They never enable a mod or
-// skip the confirmation.
+// Official signatures (modSignature.cjs) only label a mod as verified, beta,
+// unsigned or invalid, in that dialog and in the mods panel. They never enable
+// a mod or skip the confirmation.
 
 'use strict';
 
@@ -29,6 +29,7 @@ const { FOLIUM_VERSION, validateManifest, resolveLoadPlan, satisfiesHostRange, p
 const { computeModDigest, shortDigest } = require('./modDigest.cjs');
 const { verifyModSignature } = require('./modSignature.cjs');
 const { createModApi, createModDataStore, STORAGE_PERMISSION } = require('./modApi.cjs');
+const { clearDirectoryContents, isBrokenDirectory, measureDirectoryBytes, resolveModStorageDirs } = require('./modFiles.cjs');
 const { createFileGrantStore } = require('./fileGrants.cjs');
 const { resolveFfmpeg, MODS_RUNTIME_DIR } = require('./ffmpeg.cjs');
 const { createExportService } = require('./exportService.cjs');
@@ -90,8 +91,10 @@ const TRUST_DIALOG_LOCALE = {
         internals: '使用内部接口，仅兼容宿主版本：',
         verifiedRisk: '此模组带有有效的 Folium 官方签名，来源与内容已经过官方审查，且签名后未被修改。启用后它仍以应用的完整权限运行：可读写本地文件、访问网络、读取或修改任意应用设置（包括 AI 服务地址与密钥），并可在界面中执行代码。',
         signatureVerified: (key) => `签名：官方认证（${key}）`,
+        betaRisk: '此模组是 Folium 先行测试版本：仅通过了安全审查，不保证功能实现的整洁，甚至功能可能完全无法工作，主要供社区开发者做创意实验，普通用户请勿轻易启用。启用后它仍以应用的完整权限运行：可读写本地文件、访问网络、读取或修改任意应用设置（包括 AI 服务地址与密钥），并可在界面中执行代码。',
+        signatureBeta: (key) => `签名：先行测试（${key}）`,
         signatureUnsigned: '签名：无（未经官方审查的第三方模组）',
-        signatureInvalid: (reason) => `签名：不匹配（${reason}）。模组内容在签名后被修改，或签名无效，它不再是官方认证的模组。`,
+        signatureInvalid: (reason) => `签名：不匹配（${reason}）。模组内容在签名后被修改，或签名无效，这份签名不能作为审查依据。`,
         rebind: '本次确认仅对当前文件内容生效；模组文件发生变化后需要重新确认。',
         devSource: '开发模式：这个模组位于源码目录的 mods/ 中，确认后修改它的文件不会撤销本次确认。安装版和用户模组目录中的模组没有这项豁免。',
         enable: '仍要启用',
@@ -112,8 +115,10 @@ const TRUST_DIALOG_LOCALE = {
         internals: 'Uses internal APIs; only compatible with host versions: ',
         verifiedRisk: 'This mod carries a valid official Folium signature: its source and content were reviewed by Folium and have not changed since signing. Once enabled it still runs with the full privileges of the app: it can read and write local files, access the network, read or change any app setting (including the AI service URL and key), and run code inside the UI.',
         signatureVerified: (key) => `Signature: officially verified (${key})`,
+        betaRisk: 'This mod is a Folium preview build: it passed the security review only. Its implementation may be rough and its features may not work at all; it is meant for community developers to experiment with, and most users should not enable it. Once enabled it still runs with the full privileges of the app: it can read and write local files, access the network, read or change any app setting (including the AI service URL and key), and run code inside the UI.',
+        signatureBeta: (key) => `Signature: preview build (${key})`,
         signatureUnsigned: 'Signature: none (a third-party mod not reviewed by Folium)',
-        signatureInvalid: (reason) => `Signature: does not match (${reason}). The mod was changed after signing, or the signature is invalid; it is no longer an officially verified mod.`,
+        signatureInvalid: (reason) => `Signature: does not match (${reason}). The mod was changed after signing, or the signature is invalid; the signature can no longer vouch for it.`,
         rebind: 'This confirmation applies to the current files only; the mod must be confirmed again after its code changes.',
         devSource: 'Development mode: this mod is in the source tree\'s mods/ directory, so editing its files after this confirmation does not revoke it. Installed builds and the user mods directory have no such exemption.',
         enable: 'Enable anyway',
@@ -134,8 +139,10 @@ const TRUST_DIALOG_LOCALE = {
         internals: 'Memakai API internal; hanya kompatibel dengan versi host: ',
         verifiedRisk: 'Mod ini memiliki tanda tangan resmi Folium yang valid: sumber dan isinya telah ditinjau oleh Folium dan tidak berubah sejak ditandatangani. Setelah diaktifkan, mod tetap berjalan dengan hak penuh aplikasi: dapat membaca dan menulis berkas lokal, mengakses jaringan, membaca atau mengubah pengaturan apa pun (termasuk URL dan kunci layanan AI), serta menjalankan kode di dalam antarmuka.',
         signatureVerified: (key) => `Tanda tangan: terverifikasi resmi (${key})`,
+        betaRisk: 'Mod ini adalah versi pratinjau Folium: hanya lolos tinjauan keamanan. Implementasinya mungkin belum rapi dan fiturnya bisa saja sama sekali tidak berfungsi; mod ini ditujukan bagi pengembang komunitas untuk bereksperimen, dan sebagian besar pengguna sebaiknya tidak mengaktifkannya. Setelah diaktifkan, mod tetap berjalan dengan hak penuh aplikasi: dapat membaca dan menulis berkas lokal, mengakses jaringan, membaca atau mengubah pengaturan apa pun (termasuk URL dan kunci layanan AI), serta menjalankan kode di dalam antarmuka.',
+        signatureBeta: (key) => `Tanda tangan: versi pratinjau (${key})`,
         signatureUnsigned: 'Tanda tangan: tidak ada (mod pihak ketiga yang belum ditinjau Folium)',
-        signatureInvalid: (reason) => `Tanda tangan: tidak cocok (${reason}). Mod diubah setelah ditandatangani, atau tanda tangannya tidak valid; mod ini bukan lagi mod terverifikasi resmi.`,
+        signatureInvalid: (reason) => `Tanda tangan: tidak cocok (${reason}). Mod diubah setelah ditandatangani, atau tanda tangannya tidak valid; tanda tangan ini tidak lagi bisa menjaminnya.`,
         rebind: 'Konfirmasi ini hanya berlaku untuk berkas saat ini; mod harus dikonfirmasi ulang setelah kodenya berubah.',
         devSource: 'Mode pengembangan: mod ini ada di direktori mods/ pada kode sumber, jadi mengubah berkasnya setelah konfirmasi ini tidak membatalkannya. Build terpasang dan direktori mod pengguna tidak mendapat pengecualian ini.',
         enable: 'Tetap aktifkan',
@@ -158,6 +165,8 @@ const IPC = {
     ffmpegStatus: 'folia-mods:ffmpeg-status',
     openDirectory: 'folia-mods:open-directory',
     installZip: 'folia-mods:install-zip',
+    storageUsage: 'folia-mods:storage-usage',
+    clearCache: 'folia-mods:clear-cache',
     fStateChanged: 'folia-mods:state-changed',
     fExportProgress: 'folia-mods:export-progress',
     fLog: 'folia-mods:log',
@@ -299,7 +308,8 @@ const createModSystem = ({ app, BrowserWindow, getMainWindow, getLocaleKey, isFe
     };
 
     const buildModRuntime = (manifest, entries) => {
-        const dataDir = path.join(app.getPath('userData'), 'mods-data', manifest.id);
+        // mods-data/<id> (with files/ for api.storage.paths.data) and mods-cache/<id>.
+        const { dataDir, filesDir, cacheDir } = resolveModStorageDirs(app.getPath('userData'), manifest.id);
         const dataStore = createModDataStore(dataDir);
         const rpcHandlers = new Map();
         const disposers = [];
@@ -308,6 +318,8 @@ const createModSystem = ({ app, BrowserWindow, getMainWindow, getLocaleKey, isFe
             modId: manifest.id,
             manifest,
             dataStore,
+            filesDir,
+            cacheDir,
             hostInfo: hostInfo(),
             emitLog: (level, message, details) => emitLog(manifest.id, level, message, details),
             getPlaybackSnapshot: getPublicSnapshot,
@@ -748,6 +760,8 @@ const createModSystem = ({ app, BrowserWindow, getMainWindow, getLocaleKey, isFe
         broken.forEach(({ key, discovery }) => {
             nextMods.set(key, {
                 manifest: brokenManifest(key, discovery),
+                // Its key and placeholder id are a directory name, not a validated id (requireDiscoveredMod).
+                broken: true,
                 dirPath: discovery.dirPath,
                 digest: null,
                 status: 'error',
@@ -772,15 +786,18 @@ const createModSystem = ({ app, BrowserWindow, getMainWindow, getLocaleKey, isFe
      */
     const confirmEnableMod = async (runtime, digest, signature) => {
         const locale = resolveDialogLocale();
+        const keyText = signature.keyLabel ? `${signature.keyLabel}, ${signature.keyId}` : signature.keyId;
         const signatureLine = signature.status === 'verified'
-            ? locale.signatureVerified(signature.keyLabel ? `${signature.keyLabel}, ${signature.keyId}` : signature.keyId)
-            : signature.status === 'invalid'
-                ? locale.signatureInvalid(signature.reason ?? 'invalid')
-                : locale.signatureUnsigned;
+            ? locale.signatureVerified(keyText)
+            : signature.status === 'beta'
+                ? locale.signatureBeta(keyText)
+                : signature.status === 'invalid'
+                    ? locale.signatureInvalid(signature.reason ?? 'invalid')
+                    : locale.signatureUnsigned;
         const permissions = Array.isArray(runtime.manifest.permissions) ? runtime.manifest.permissions : [];
         const { client, experimental = [], embedOrigins = [], folia } = runtime.manifest;
         const detail = [
-            signature.status === 'verified' ? locale.verifiedRisk : locale.risk,
+            signature.status === 'verified' ? locale.verifiedRisk : signature.status === 'beta' ? locale.betaRisk : locale.risk,
             '',
             signatureLine,
             permissions.length > 0 ? `${locale.permissions}${permissions.join(', ')}` : locale.noPermissions,
@@ -1046,6 +1063,57 @@ const createModSystem = ({ app, BrowserWindow, getMainWindow, getLocaleKey, isFe
         }
         const result = await runtime.dataStore[operation](key, value);
         return { ok: true, result: result === undefined ? null : result };
+    };
+
+    /*
+     * The mods panel's file actions work on any mod the loader discovered, loaded or not (a
+     * disabled mod's files still take space), but never on a broken entry: its map key is a
+     * directory name, so only a validated manifest id that is also its own key becomes a path.
+     */
+    const requireDiscoveredMod = (modId) => {
+        const runtime = typeof modId === 'string' ? mods.get(modId) : null;
+        if (!runtime || runtime.broken || runtime.manifest?.id !== modId) {
+            throw new Error('mod-not-found');
+        }
+        return resolveModStorageDirs(app.getPath('userData'), modId);
+    };
+
+    /*
+     * Disk usage for the mods panel: all of mods-data/<id> (mod-data.json included) and mods-cache/<id>.
+     * `cacheBroken` (only when true) marks a cache root that is a stray file or a dead link: it counts 0,
+     * yet the mod's paths.cache throws on every read, so the panel still offers "clear cache", which
+     * removes the entry and lets the next read create a real directory.
+     */
+    const getModStorageUsage = async (modId) => {
+        const { dataDir, cacheDir } = requireDiscoveredMod(modId);
+        try {
+            const [data, cache, cacheBroken] = await Promise.all([
+                measureDirectoryBytes(dataDir),
+                measureDirectoryBytes(cacheDir),
+                isBrokenDirectory(cacheDir),
+            ]);
+            return cacheBroken ? { ok: true, data, cache, cacheBroken: true } : { ok: true, data, cache };
+        } catch {
+            return { ok: false, error: 'storage-usage-failed' };
+        }
+    };
+
+    /*
+     * Empties mods-cache/<id>, keeping the directory itself; api.storage.paths.cache re-creates
+     * it on its next read anyway. A root that is a stray file or a link goes as one entry. A running
+     * mod may hold files open, so some can fail (EBUSY on Windows): the rest still go, and the result
+     * says the clear was partial.
+     */
+    const clearModCache = async (modId) => {
+        const { cacheDir } = requireDiscoveredMod(modId);
+        try {
+            const { cleared, failed } = await clearDirectoryContents(cacheDir);
+            return failed > 0
+                ? { ok: false, error: 'cache-clear-partial', cleared }
+                : { ok: true, cleared };
+        } catch {
+            return { ok: false, error: 'cache-clear-failed' };
+        }
     };
 
     const listMods = () => Array.from(mods.values())
@@ -1374,6 +1442,8 @@ const createModSystem = ({ app, BrowserWindow, getMainWindow, getLocaleKey, isFe
         handle(IPC.ffmpegStatus, async () => ({ ffmpeg: await probeFfmpeg() }));
         handle(IPC.openDirectory, () => openModsDirectory());
         handle(IPC.installZip, (_event, zipPath) => installModFromZip(zipPath));
+        handle(IPC.storageUsage, (_event, modId) => getModStorageUsage(modId));
+        handle(IPC.clearCache, (_event, modId) => clearModCache(modId));
     };
 
     const dispose = () => {

@@ -46,20 +46,23 @@ const BravaisHome: React.FC<LibraryHomeSurfaceProps> = (props) => {
     const selectTab = useCallback((key: LibraryHomeTabKey) => {
         const target = tabs.find(candidate => candidate.key === key);
         if (!target || target.disabledReason) return false;
+        props.onNativeTabSelected?.();
         setBravaisSearchOpen(false);
         setTab(key);
         return true;
-    }, [setTab, tabs]);
-    useLibraryHomeTabsRegistration({ getState: () => ({ active: tab, tabs }), setTab: selectTab });
+    }, [setTab, tabs, props.onNativeTabSelected]);
 
     const chrome = useBravaisHomeChrome({
         tab,
         tabs,
+        providerId: online.providerId,
         selectTab,
         scanPercent,
         scanning: Boolean(actionState.scan?.active),
         props,
     });
+    // F6 的循环也交给句柄：模组的首页页面盖住首页时墙的按键监听让出，页面里按 F6 经句柄接着循环。
+    useLibraryHomeTabsRegistration({ getState: () => ({ active: tab, tabs }), setTab: selectTab, cycleTab: chrome.cycleTab });
     const tabLabel = (key: LibraryHomeTabKey) => tabs.find(candidate => candidate.key === key)?.label ?? key;
     const common = {
         chrome,

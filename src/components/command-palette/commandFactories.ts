@@ -4,6 +4,7 @@ import type { PanelTab } from '../UnifiedPanel';
 import type { AudioEqualizerModeId } from '../../utils/audioEqualizer';
 import type { GridSurfaceActionId } from '../../types/gridCommandSurface';
 import type { LibraryDirectorySurfaceActionId } from '../../library/core/contracts/directory';
+import { useLibraryHomeSurfaceStore } from '../../library/core/state/useLibraryHomeSurfaceStore';
 import type { LibraryArtistSurfaceActionId } from '../../library/core/contracts/artist';
 import type { LibrarySuiteChromeActionMeta } from '../../library/core/contracts/suiteChrome';
 import { libraryChromeCommandId } from '../../library/core/model/suiteChrome';
@@ -267,7 +268,9 @@ export const createHomeTabCommand = (
     description,
     keywords,
     execute: (_input, context) => {
-        context.navigation.setHomeViewTab(tab);
+        // The mounted surface also dismisses an owned page when reselecting the current source.
+        // Without it (Lattice, or home hidden under the player) the host's selectHomeViewTab dismisses the page itself.
+        if (!useLibraryHomeSurfaceStore.getState().tabs?.setTab(tab)) context.navigation.selectHomeViewTab(tab);
         context.navigation.navigateToHome();
         return true;
     },

@@ -2,7 +2,7 @@
 
 # Folium API 参考
 
-当前契约版本：**Folium 1.4**（运行时用 `folium.host.folium.minor` 做功能探测）。
+当前契约版本：**Folium 1.5**（运行时用 `folium.host.folium.minor` 做功能探测）。
 
 本文列出模组能用到的全部公开类型，内容直接来自契约文件 [`src/mods/folium/contract.ts`](../../src/mods/folium/contract.ts)，
 成员说明保留契约里的原文注释。平台规则（清单、权限、生命周期、安全模型）见 [Folium 规范](../../mods/README.md)，
@@ -11,16 +11,16 @@
 ## 目录
 
 - **客户端入口**：[FoliumContextKind](#foliumcontextkind) · [FoliumHostInfo](#foliumhostinfo) · [FoliumStorage](#foliumstorage) · [FoliumRpc](#foliumrpc) · [FoliumLogger](#foliumlogger) · [FoliumClientApi](#foliumclientapi) · [FoliumClientModule](#foliumclientmodule)
-- **注册表与条目**：[FoliumVisualizerDef](#foliumvisualizerdef) · [FoliumTuningDef](#foliumtuningdef) · [FoliumCommandContext](#foliumcommandcontext) · [FoliumCommandDef](#foliumcommanddef) · [FoliumBackgroundContext](#foliumbackgroundcontext) · [FoliumBackgroundDef](#foliumbackgrounddef) · [FoliumStageSlot](#foliumstageslot) · [FoliumStageLayerDef](#foliumstagelayerdef) · [FoliumSettingsSectionDef](#foliumsettingssectiondef) · [FoliumPlayerPanelTabDef](#foliumplayerpaneltabdef) · [FoliumProgressContext](#foliumprogresscontext) · [FoliumControlSlot](#foliumcontrolslot) · [FoliumControlButtonDef](#foliumcontrolbuttondef) · [FoliumProgressLayerDef](#foliumprogresslayerdef) · [FoliumStyleDef](#foliumstyledef) · [FoliumRegistryHandle](#foliumregistryhandle) · [FoliumSettingsSectionHandle](#foliumsettingssectionhandle) · [FoliumRegistry](#foliumregistry) · [FoliumRegistries](#foliumregistries)
+- **注册表与条目**：[FoliumVisualizerDef](#foliumvisualizerdef) · [FoliumTuningDef](#foliumtuningdef) · [FoliumCommandContext](#foliumcommandcontext) · [FoliumCommandDef](#foliumcommanddef) · [FoliumBackgroundContext](#foliumbackgroundcontext) · [FoliumBackgroundDef](#foliumbackgrounddef) · [FoliumStageSlot](#foliumstageslot) · [FoliumStageLayerDef](#foliumstagelayerdef) · [FoliumSettingsSectionDef](#foliumsettingssectiondef) · [FoliumPlayerPanelTabDef](#foliumplayerpaneltabdef) · [FoliumHomeTabDef](#foliumhometabdef) · [FoliumProgressContext](#foliumprogresscontext) · [FoliumControlSlot](#foliumcontrolslot) · [FoliumControlButtonDef](#foliumcontrolbuttondef) · [FoliumProgressLayerDef](#foliumprogresslayerdef) · [FoliumStyleDef](#foliumstyledef) · [FoliumRegistryHandle](#foliumregistryhandle) · [FoliumSettingsSectionHandle](#foliumsettingssectionhandle) · [FoliumRegistry](#foliumregistry) · [FoliumRegistries](#foliumregistries)
 - **宿主容器与上下文**：[FoliumMount](#foliummount) · [FoliumPanelContext](#foliumpanelcontext) · [FoliumSettingsPanelContext](#foliumsettingspanelcontext) · [FoliumClock](#foliumclock) · [FoliumSurface](#foliumsurface) · [FoliumAudioBands](#foliumaudiobands) · [FoliumAudio](#foliumaudio) · [FoliumDisplay](#foliumdisplay) · [FoliumStageContext](#foliumstagecontext)
-- **事件**：[FoliumEventPriority](#foliumeventpriority) · [FoliumNotificationEvents](#foliumnotificationevents) · [FoliumLyricsTransformEvent](#foliumlyricstransformevent) · [FoliumBeforePlayEvent](#foliumbeforeplayevent) · [FoliumOmniLyricsEvent](#foliumomnilyricsevent) · [FoliumOmniAudioEvent](#foliumomniaudioevent) · [FoliumHookEvents](#foliumhookevents) · [FoliumEventMap](#foliumeventmap) · [FoliumEvents](#foliumevents)
+- **事件**：[FoliumEventPriority](#foliumeventpriority) · [FoliumPlaybackFailureReason](#foliumplaybackfailurereason) · [FoliumNotificationEvents](#foliumnotificationevents) · [FoliumLyricsTransformEvent](#foliumlyricstransformevent) · [FoliumBeforePlayEvent](#foliumbeforeplayevent) · [FoliumOmniLyricsEvent](#foliumomnilyricsevent) · [FoliumOmniAudioEvent](#foliumomniaudioevent) · [FoliumHookEvents](#foliumhookevents) · [FoliumEventMap](#foliumeventmap) · [FoliumEvents](#foliumevents)
 - **服务**：[FoliumPlaybackService](#foliumplaybackservice) · [FoliumFileHandle](#foliumfilehandle) · [FoliumIconOptions](#foliumiconoptions) · [FoliumUiService](#foliumuiservice) · [FoliumFetchInit](#foliumfetchinit) · [FoliumFetchResponse](#foliumfetchresponse) · [FoliumNetService](#foliumnetservice)
 - **共享工具**：[FoliumWordSegment](#foliumwordsegment) · [FoliumWordColorRange](#foliumwordcolorrange) · [FoliumLyricsHelpers](#foliumlyricshelpers) · [FoliumThemeHelpers](#foliumthemehelpers)
 - **参数 schema**：[FoliumParamType](#foliumparamtype) · [FoliumParamOption](#foliumparamoption) · [FoliumParam](#foliumparam) · [FoliumParamValues](#foliumparamvalues) · [FoliumParamAccess](#foliumparamaccess)
-- **数据结构**：[FoliumLyricRuby](#foliumlyricruby) · [FoliumLyricSyllable](#foliumlyricsyllable) · [FoliumLyricAlternateText](#foliumlyricalternatetext) · [FoliumWord](#foliumword) · [FoliumBackgroundVocal](#foliumbackgroundvocal) · [FoliumLineTimingClass](#foliumlinetimingclass) · [FoliumLineTransitionMode](#foliumlinetransitionmode) · [FoliumWordRevealMode](#foliumwordrevealmode) · [FoliumLineRenderHints](#foliumlinerenderhints) · [FoliumLine](#foliumline) · [FoliumTheme](#foliumtheme) · [FoliumSong](#foliumsong) · [FoliumPlaybackState](#foliumplaybackstate) · [FoliumPlaybackSnapshot](#foliumplaybacksnapshot) · [FoliumLyricFormat](#foliumlyricformat) · [FoliumLyricsTrack](#foliumlyricstrack) · [FoliumLyricsResult](#foliumlyricsresult) · [FoliumLegacyLyricsResult](#foliumlegacylyricsresult) · [FoliumParsedLyrics](#foliumparsedlyrics)
+- **数据结构**：[FoliumLyricRuby](#foliumlyricruby) · [FoliumLyricSyllable](#foliumlyricsyllable) · [FoliumLyricAlternateText](#foliumlyricalternatetext) · [FoliumWord](#foliumword) · [FoliumBackgroundVocal](#foliumbackgroundvocal) · [FoliumLineTimingClass](#foliumlinetimingclass) · [FoliumLineTransitionMode](#foliumlinetransitionmode) · [FoliumWordRevealMode](#foliumwordrevealmode) · [FoliumLineRenderHints](#foliumlinerenderhints) · [FoliumLine](#foliumline) · [FoliumTheme](#foliumtheme) · [FoliumSong](#foliumsong) · [FoliumPlaybackState](#foliumplaybackstate) · [FoliumLoopMode](#foliumloopmode) · [FoliumQueueItem](#foliumqueueitem) · [FoliumQueueSnapshot](#foliumqueuesnapshot) · [FoliumPlaybackSnapshot](#foliumplaybacksnapshot) · [FoliumLyricFormat](#foliumlyricformat) · [FoliumLyricsTrack](#foliumlyricstrack) · [FoliumLyricsResult](#foliumlyricsresult) · [FoliumLegacyLyricsResult](#foliumlegacylyricsresult) · [FoliumParsedLyrics](#foliumparsedlyrics)
 - **实验接口**：[FoliumProviderSong](#foliumprovidersong) · [FoliumAudioQuality](#foliumaudioquality) · [FoliumOmniProviderDef](#foliumomniproviderdef)
 - **基础类型**：[FOLIUM_VERSION](#folium_version) · [FoliumId](#foliumid) · [FoliumLabel](#foliumlabel) · [FoliumDisposer](#foliumdisposer)
-- **main 入口（Node）**：[api 对象](#main-入口node)
+- **main 入口（Node）**：[api 对象](#main-入口node) · [FoliumModPaths](#foliummodpaths)
 
 ## 客户端入口
 
@@ -252,6 +252,19 @@ A tab in the player panel. `folium.ui.openPlayerPanel(id)` opens it.
 
 相关：[FoliumLabel](#foliumlabel) · [FoliumMount](#foliummount) · [FoliumPanelContext](#foliumpanelcontext)
 
+### FoliumHomeTabDef
+
+Folium 1.5: an owned full-page tab appended to Grid and Bravais home navigation.
+
+| 成员 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `string` | Local id; pass it to `folium.ui.openHomeTab`. |
+| `label` | `FoliumLabel` | Localized navigation label. |
+| `order?` | `number` | Order among contributed home tabs; default 500. Native tabs retain their order. |
+| `mount` | `FoliumMount<FoliumPanelContext>` | Mounts in an isolated, bounded full-page container. Returns cleanup on leaving the page. |
+
+相关：[FoliumLabel](#foliumlabel) · [FoliumMount](#foliummount) · [FoliumPanelContext](#foliumpanelcontext)
+
 ### FoliumProgressContext
 
 Progress-bar context shared by control buttons and progress layers.
@@ -354,7 +367,7 @@ interface FoliumRegistry<Def, Handle extends FoliumRegistryHandle = FoliumRegist
 
 ### FoliumRegistries
 
-All registries, as `folium.registries`. UI-only ones (commands, stageLayers, playerPanelTabs,
+All registries, as `folium.registries`. UI-only ones (commands, stageLayers, playerPanelTabs, homeTabs,
 controlButtons, progressLayers, styles) accept registrations and do nothing in the export window.
 
 | 成员 | 类型 | 说明 |
@@ -366,11 +379,12 @@ controlButtons, progressLayers, styles) accept registrations and do nothing in t
 | `stageLayers` | `FoliumRegistry<FoliumStageLayerDef>` | Player page layers (`ui.stage`). |
 | `settingsSections` | `FoliumRegistry<FoliumSettingsSectionDef, FoliumSettingsSectionHandle>` | The mod's own settings. |
 | `playerPanelTabs` | `FoliumRegistry<FoliumPlayerPanelTabDef>` | Player panel tabs. |
+| `homeTabs` | `FoliumRegistry<FoliumHomeTabDef>` | Folium 1.5: full pages in home navigation; inert outside the main window. |
 | `controlButtons` | `FoliumRegistry<FoliumControlButtonDef>` | Progress bar buttons. |
 | `progressLayers` | `FoliumRegistry<FoliumProgressLayerDef>` | Layers over the progress track. |
 | `styles` | `FoliumRegistry<FoliumStyleDef>` | Mod CSS for public parts. |
 
-相关：[FoliumRegistry](#foliumregistry) · [FoliumVisualizerDef](#foliumvisualizerdef) · [FoliumTuningDef](#foliumtuningdef) · [FoliumCommandDef](#foliumcommanddef) · [FoliumBackgroundDef](#foliumbackgrounddef) · [FoliumStageLayerDef](#foliumstagelayerdef) · [FoliumSettingsSectionDef](#foliumsettingssectiondef) · [FoliumSettingsSectionHandle](#foliumsettingssectionhandle) · [FoliumPlayerPanelTabDef](#foliumplayerpaneltabdef) · [FoliumControlButtonDef](#foliumcontrolbuttondef) · [FoliumProgressLayerDef](#foliumprogresslayerdef) · [FoliumStyleDef](#foliumstyledef)
+相关：[FoliumRegistry](#foliumregistry) · [FoliumVisualizerDef](#foliumvisualizerdef) · [FoliumTuningDef](#foliumtuningdef) · [FoliumCommandDef](#foliumcommanddef) · [FoliumBackgroundDef](#foliumbackgrounddef) · [FoliumStageLayerDef](#foliumstagelayerdef) · [FoliumSettingsSectionDef](#foliumsettingssectiondef) · [FoliumSettingsSectionHandle](#foliumsettingssectionhandle) · [FoliumPlayerPanelTabDef](#foliumplayerpaneltabdef) · [FoliumHomeTabDef](#foliumhometabdef) · [FoliumControlButtonDef](#foliumcontrolbuttondef) · [FoliumProgressLayerDef](#foliumprogresslayerdef) · [FoliumStyleDef](#foliumstyledef)
 
 ## 宿主容器与上下文
 
@@ -532,6 +546,17 @@ Handler order for one event type; handlers of the same priority run in registrat
 type FoliumEventPriority = 'highest' | 'high' | 'normal' | 'low' | 'lowest'
 ```
 
+### FoliumPlaybackFailureReason
+
+Folium 1.5: why a song failed to play, coarsely. `auth`: sign-in needed or expired. `restricted`:
+membership, purchase, entitlement, preview-only or region. `taken-down`: no longer offered. `network`:
+network, timeout, service unavailable or rate limited. `unknown`: anything else. The host's own reason
+codes are not API.
+
+```ts
+type FoliumPlaybackFailureReason = 'auth' | 'restricted' | 'taken-down' | 'network' | 'unknown'
+```
+
 ### FoliumNotificationEvents
 
 Read-only notifications, emitted after the fact.
@@ -546,8 +571,12 @@ Read-only notifications, emitted after the fact.
 | `visualizer.modeChanged` | `{ readonly mode: string }` | The lyric animation mode changed. |
 | `theme.changed` | `{ readonly theme: FoliumTheme }` | The theme or daylight mode changed. |
 | `playback.likeChanged` | `{ readonly liked: boolean }` | Folium 1.3: `playback.getState().liked` changed (a like or unlike, or a new song). |
+| `playback.volumeChanged` | `{ readonly volume: number; readonly muted: boolean }` | Folium 1.5: the volume or the mute switch changed, whoever changed it. |
+| `playback.loopModeChanged` | `{ readonly mode: FoliumLoopMode }` | Folium 1.5: the repeat mode changed. |
+| `playback.queueChanged` | `{ readonly length: number; readonly currentIndex: number }` | Folium 1.5: the queue changed, or the displayed song moved within it. Only the outline: call `playback.getQueue()` for the songs. Changes made in one task arrive as one event. |
+| `playback.failed` | `{ readonly song: FoliumSong \| null; readonly reason: FoliumPlaybackFailureReason; readonly phase: 'play' \| 'restore' \| 'mid-playback'; readonly willAutoSkip: boolean; }` | Folium 1.5: a song failed to play; reported once, after the host's own retries. `phase` says where it failed: `play`, the host got no playable source for the song just picked (sign-in, membership, taken down, the address lookup failed, a missing local file); `restore`, the same while restoring the last session; `mid-playback`, the player failed on the media itself (it would not load, decode or keep streaming). Every media error is `mid-playback`, so a song just picked or restored that fails before any sound is reported as `mid-playback` too. `willAutoSkip`: the host is counting down to skip it (its policy or the user's "skip unplayable songs" setting), so do not call `next()` yourself. Not emitted in the export window. |
 
-相关：[FoliumSong](#foliumsong) · [FoliumPlaybackState](#foliumplaybackstate) · [FoliumLine](#foliumline) · [FoliumTheme](#foliumtheme)
+相关：[FoliumSong](#foliumsong) · [FoliumPlaybackState](#foliumplaybackstate) · [FoliumLine](#foliumline) · [FoliumTheme](#foliumtheme) · [FoliumLoopMode](#foliumloopmode) · [FoliumPlaybackFailureReason](#foliumplaybackfailurereason)
 
 ### FoliumLyricsTransformEvent
 
@@ -646,8 +675,9 @@ The event bus, as `folium.events`.
 
 ### FoliumPlaybackService
 
-`folium.playback`. `getState` is always available; every other method needs the `playback.control`
-permission. All of it is unavailable in the export window.
+`folium.playback`. The readers (`getState`, and from Folium 1.5 `getVolume`, `getLoopMode` and `getQueue`)
+need no permission; every other method needs the `playback.control` permission. All of it is unavailable
+in the export window.
 
 | 成员 | 类型 | 说明 |
 | --- | --- | --- |
@@ -663,8 +693,15 @@ permission. All of it is unavailable in the export window.
 | `enqueue()` | `(song: FoliumSong): boolean` | Appends a song (by `ref`) to the queue. Needs `playback.control`. |
 | `shuffleQueue()` | `(): boolean` | Folium 1.3: shuffles the play queue, keeping the current song first. False when there is nothing to shuffle (Personal FM, a queue of one, external Stage playback). Needs `playback.control`. |
 | `toggleLike()` | `(): boolean` | Folium 1.3: likes or unlikes the displayed song, like the host's like button, which also reports the result. False when `canLike` is false. Needs `playback.control`. |
+| `getVolume()` | `(): { volume: number; muted: boolean }` | Folium 1.5: output volume (0–1) and the mute switch, which is separate from it. |
+| `setVolume()` | `(volume: number): void` | Folium 1.5: sets the volume, clamped to 0–1, the way the host's volume slider does; `muted` stays as it is. Every call is saved, so set the value you settled on rather than animating through it. Needs `playback.control`. |
+| `setMuted()` | `(muted: boolean): void` | Folium 1.5: mutes or unmutes. A set rather than a toggle, so two windows acting at once cannot cancel each other out. Needs `playback.control`. |
+| `getLoopMode()` | `(): FoliumLoopMode` | Folium 1.5: the repeat mode. |
+| `setLoopMode()` | `(mode: FoliumLoopMode): void` | Folium 1.5: sets the repeat mode; the host reports the change like its own repeat button does. Setting the mode already in effect does nothing. Needs `playback.control`. |
+| `getQueue()` | `(options?: { offset?: number; limit?: number }): FoliumQueueSnapshot` | Folium 1.5: a page of the play queue. `limit` defaults to 500, the most one call returns; without `offset` the page is centred on the displayed song. Song refs come from a pool of 2,000 shared with every other song DTO, the least recently handed out dropped first: every ref of the page you just read resolves, so read the pages you show rather than the whole queue. |
+| `playQueueItem()` | `(index: number, expectedRef?: string): Promise<boolean>` | Folium 1.5: plays queue entry `index`, with the same playback and navigation as clicking it in the host's queue panel; if it fails to play, the retry and skip buttons follow the queue as it is when pressed. In Personal FM, where the panel lists no queue, it plays the entry and FM stays on. With `expectedRef`, resolves false without acting when that position no longer holds that song (the queue changed between your calls). False for an index out of range and during external Stage playback. Needs `playback.control`. |
 
-相关：[FoliumSong](#foliumsong) · [FoliumPlaybackState](#foliumplaybackstate)
+相关：[FoliumSong](#foliumsong) · [FoliumPlaybackState](#foliumplaybackstate) · [FoliumLoopMode](#foliumloopmode) · [FoliumQueueSnapshot](#foliumqueuesnapshot)
 
 ### FoliumFileHandle
 
@@ -695,6 +732,7 @@ Folium 1.2: options for `folium.ui.icon`.
 | --- | --- | --- |
 | `toast()` | `(message: string, options?: { type?: 'info' \| 'success' \| 'error'; durationMs?: number }): void` | Shows a status message. |
 | `openPlayerPanel()` | `(tabId?: string): void` | Opens the player panel, optionally on one of this mod's panel tabs (local id). |
+| `openHomeTab()` | `(tabId: string): void` | Folium 1.5: opens this mod's registered home tab (local id). Rejects unknown tabs. |
 | `navigate()` | `(view: 'home' \| 'player'): void` | Switches to the home or player view. |
 | `openVolume()` | `(): void` | Folium 1.3: opens the host volume panel (the command palette's volume command). |
 | `pickFile()` | `(options?: { accept?: 'video' \| 'audio' \| 'image' \| 'any'; persist?: boolean }): Promise<FoliumFileHandle \| null>` | Lets the user pick a local file; null when cancelled. With `persist` (Folium 1.1) the pick is remembered for this mod and the handle carries a `grantId` for restoreFile. |
@@ -1043,6 +1081,38 @@ The host player state.
 type FoliumPlaybackState = 'playing' | 'paused' | 'stopped'
 ```
 
+### FoliumLoopMode
+
+Folium 1.5: the repeat mode. `all` repeats the queue, `one` the current song.
+
+```ts
+type FoliumLoopMode = 'off' | 'all' | 'one'
+```
+
+### FoliumQueueItem
+
+Folium 1.5: one entry of the play queue, as `folium.playback.getQueue()` lists it.
+
+| 成员 | 类型 | 说明 |
+| --- | --- | --- |
+| `readonly song` | `FoliumSong` | The song; its `ref` works with playSong, enqueue and playQueueItem. |
+| `readonly index` | `number` | Its position in the host queue; stale as soon as the queue changes (`playback.queueChanged`). |
+
+相关：[FoliumSong](#foliumsong)
+
+### FoliumQueueSnapshot
+
+Folium 1.5: a page of the play queue, from `folium.playback.getQueue()`.
+
+| 成员 | 类型 | 说明 |
+| --- | --- | --- |
+| `readonly items` | `readonly FoliumQueueItem[]` | The requested page, in queue order; each item carries its absolute `index`. |
+| `readonly length` | `number` | Songs in the whole queue, not just this page. |
+| `readonly currentIndex` | `number` | Position of the displayed song in the queue; -1 when it is not in it. The host finds the current song by identity, so a song listed twice counts at its first position. |
+| `readonly kind` | `'queue' \| 'fm' \| 'stage'` | `queue`: the play queue. `fm`: Personal FM, whose queue is the current FM batch. `stage`: external Stage playback; the queue has nothing to do with what is playing, and playQueueItem refuses. |
+
+相关：[FoliumQueueItem](#foliumqueueitem)
+
 ### FoliumPlaybackSnapshot
 
 The whole playback picture, as main entries read it with `api.runtime.getPlaybackSnapshot()`.
@@ -1056,8 +1126,11 @@ The whole playback picture, as main entries read it with `api.runtime.getPlaybac
 | `lines` | `FoliumLine[]` | Lyrics of the displayed song. |
 | `theme` | `FoliumTheme \| null` | The current theme. |
 | `visualizerMode` | `string \| null` | The current lyric animation mode id. |
+| `volume` | `number` | Folium 1.5: output volume, 0–1. |
+| `muted` | `boolean` | Folium 1.5: the mute switch, separate from `volume`. |
+| `loopMode` | `FoliumLoopMode` | Folium 1.5: the repeat mode. |
 
-相关：[FoliumSong](#foliumsong) · [FoliumPlaybackState](#foliumplaybackstate) · [FoliumLine](#foliumline) · [FoliumTheme](#foliumtheme)
+相关：[FoliumSong](#foliumsong) · [FoliumPlaybackState](#foliumplaybackstate) · [FoliumLine](#foliumline) · [FoliumTheme](#foliumtheme) · [FoliumLoopMode](#foliumloopmode)
 
 ### FoliumLyricFormat
 
@@ -1173,7 +1246,7 @@ online song. Use folium.net.fetch for network access.
 The Folium version this host implements; mods read it at runtime as `folium.host.folium`.
 
 ```ts
-const FOLIUM_VERSION = Object.freeze({ major: 1, minor: 4 })
+const FOLIUM_VERSION = Object.freeze({ major: 1, minor: 5 })
 ```
 
 ### FoliumId
@@ -1217,9 +1290,26 @@ module.exports = function activate(api) {
 | `api.manifest` | 冻结的清单副本 |
 | `api.host` | `{ folium: { major, minor }, folia }`，与客户端的 `folium.host` 相同 |
 | `api.log.info / warn / error(message, details?)` | 写入模组日志；`error` 会显示在模组面板 |
-| `api.storage.data.get / set / has / delete / keys` | 异步；需要 `filesystem.data`；与客户端 `folium.storage` 共用同一个数据文件（上限 1 MB） |
+| `api.storage.data.get / set / has / delete / keys` | 异步；需要 `filesystem.data`；与客户端 `folium.storage` 共用同一个数据文件（上限 1 MB）。更大的内容写成文件，放进 `api.storage.paths.data` |
+| `api.storage.paths.data / cache` | Folium 1.5：[FoliumModPaths](#foliummodpaths)，本模组写文件的两个目录的绝对路径。两个都是 getter：需要 `filesystem.data`，没有时读取即同步抛 `permission-denied:filesystem.data`；每次读取都会在目录不存在时先创建它，所以用的时候再读，不要存下来一直用；建不出来时（比如目录的位置上是一个文件或失效的链接）抛文件系统的错误，`cache` 是这样时，在模组面板里清空缓存会删掉这个条目。两个 getter 不可枚举，序列化或展开 `api` 不会读到它们。`data` 放要保留的文件；`cache` 放能重建的文件，用户随时可能在模组面板里清空它（模组运行时也一样），宿主不限大小，上限自己控制。`paths` 对象总是存在，可以用 `'paths' in api.storage` 判断宿主是否支持 |
 | `api.lifecycle.onDeactivate(fn)` | 模组被停用、重载或应用退出时调用；`activate` 返回的函数效果相同 |
-| `api.runtime.getPlaybackSnapshot()` | 当前播放状态的 [FoliumPlaybackSnapshot](#foliumplaybacksnapshot)，渲染端尚未推送时为 `null`；需要 `runtime.playback` |
+| `api.runtime.getPlaybackSnapshot()` | 当前播放状态的 [FoliumPlaybackSnapshot](#foliumplaybacksnapshot)，渲染端尚未推送时为 `null`；需要 `runtime.playback`。Folium 1.5 起还带音量 `volume`（0–1）、静音开关 `muted` 与循环模式 `loopMode` |
 | `api.rpc.handle(name, fn)` | 注册客户端 `folium.rpc.call(name, ...args)` 调用的函数；名称匹配 `/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/`，参数与返回值需可 JSON 序列化 |
 | `api.render.exportVideo(spec)` | 按当前歌曲、动画模式与参数导出透明视频；需要 `render.export` 与 ffmpeg |
 | `api.experimental` | 预留，目前为空 |
+
+只属于 main 入口的类型，同样来自契约文件：
+
+### FoliumModPaths
+
+Folium 1.5, main entries only: `api.storage.paths`, the directories this mod writes its files to. Needs
+the `filesystem.data` permission; without it, reading either path throws `permission-denied:filesystem.data`.
+Each read creates the directory when it is missing, and throws the file system's error when it cannot (a file
+or a dead link standing where the directory should be; for `cache`, clearing the cache in the mods panel
+removes that entry). Both getters are non-enumerable, so serializing or spreading `api` never reads them.
+Clients get no paths: they have no file system.
+
+| 成员 | 类型 | 说明 |
+| --- | --- | --- |
+| `readonly data` | `string` | Files to keep: `<userData>/mods-data/<id>/files`, beside (not holding) the `folium.storage` data file. |
+| `readonly cache` | `string` | Files the mod can rebuild: `<userData>/mods-cache/<id>`. The user can empty it from the mods panel at any time, even while the mod runs, so expect files to vanish; the host sets no size limit, so cap it yourself. |

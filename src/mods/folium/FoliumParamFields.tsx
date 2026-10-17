@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { Theme } from '@/types';
 import type { FoliumParam } from './contract';
 import { formatFoliumParamNumber, resolveFoliumLabel, resolveFoliumParamStep, sanitizeFoliumParams } from './params';
+import { FoliumSelectField } from './FoliumSelectField';
 
 // src/mods/folium/FoliumParamFields.tsx
 // The one param-form implementation in the mod system. Every schema-backed
@@ -41,6 +43,12 @@ interface FoliumParamFieldsProps {
     token: FoliumParamFieldToken;
     /** Renders the boolean toggle labels; defaults to the shared on/off keys. */
     booleanLabels?: { on: string; off: string };
+    /**
+     * Colours the select menu. It is portaled to document.body, out of reach
+     * of the surface's CSS variables, so it needs the theme handed over.
+     */
+    theme?: Theme;
+    isDaylight?: boolean;
     onChange: (param: FoliumParam, value: unknown) => void;
 }
 
@@ -72,15 +80,26 @@ const FoliumParamField: React.FC<{
     onLabel: string;
     offLabel: string;
     language: string;
+    theme?: Theme;
+    isDaylight?: boolean;
     onChange: (param: FoliumParam, value: unknown) => void;
-}> = ({ param, value, disabled, token, onLabel, offLabel, language, onChange }) => {
+}> = ({ param, value, disabled, token, onLabel, offLabel, language, theme, isDaylight, onChange }) => {
     const label = resolveFoliumLabel(param.label, language, param.key);
+    const labelId = useId();
     const description = param.description ? resolveFoliumLabel(param.description, language, '') : '';
     const title = description ? `${label}\n${description}` : label;
     const numericValue = typeof value === 'number' ? value : Number(param.defaultValue ?? param.min ?? 0);
     const fullRow = param.type !== 'boolean';
+    /*
+     * A select row is a <div>, not a <label>: a label around the trigger button
+     * forwards clicks on its text to the button (with the menu open, the
+     * mousedown closes it and the click reopens it) and folds the text into the
+     * button's accessible name. The trigger is named by aria-labelledby instead:
+     * this row's label span (labelId) followed by the value the trigger shows.
+     */
+    const Row = param.type === 'select' ? 'div' : 'label';
     return (
-        <label className={`flex flex-col gap-1 min-w-0 ${fullRow ? 'col-span-2' : ''}`} title={title}>
+        <Row className={`flex flex-col gap-1 min-w-0 ${fullRow ? 'col-span-2' : ''}`} title={title}>
             {param.type === 'number' ? (
                 <div className="flex items-center justify-between gap-2 min-w-0">
                     <span className={token.label}>{label}</span>
@@ -89,7 +108,7 @@ const FoliumParamField: React.FC<{
                     </span>
                 </div>
             ) : (
-                <span className={token.label}>{label}</span>
+                <span id={param.type === 'select' ? labelId : undefined} className={token.label}>{label}</span>
             )}
 
             {param.type === 'number' ? (
@@ -134,21 +153,21 @@ const FoliumParamField: React.FC<{
                 </button>
             ) : null}
             {param.type === 'select' ? (
-                <select
-                    className={token.input}
-                    style={token.inputStyle}
-                    value={typeof value === 'string' ? value : String(param.defaultValue ?? '')}
+                <FoliumSelectField
+                    param={param}
+                    value={value}
+                    label={label}
+                    labelId={labelId}
+                    language={language}
                     disabled={disabled}
-                    onChange={(event) => onChange(param, event.target.value)}
-                >
-                    {(param.options ?? []).map((option) => (
-                        <option key={option.value} value={option.value}>
-                            {resolveFoliumLabel(option.label, language, option.value)}
-                        </option>
-                    ))}
-                </select>
+                    inputClassName={token.input}
+                    inputStyle={token.inputStyle}
+                    theme={theme}
+                    isDaylight={isDaylight}
+                    onChange={onChange}
+                />
             ) : null}
-        </label>
+        </Row>
     );
 };
 
@@ -158,6 +177,8 @@ export const FoliumParamFields: React.FC<FoliumParamFieldsProps> = ({
     disabled = false,
     token,
     booleanLabels,
+    theme,
+    isDaylight,
     onChange,
 }) => {
     const { t, i18n } = useTranslation();
@@ -188,6 +209,8 @@ export const FoliumParamFields: React.FC<FoliumParamFieldsProps> = ({
                             onLabel={onLabel}
                             offLabel={offLabel}
                             language={i18n.language}
+                            theme={theme}
+                            isDaylight={isDaylight}
                             onChange={onChange}
                         />
                     ))}

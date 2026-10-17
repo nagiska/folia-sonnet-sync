@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { ModExportProgress, ModFfmpegStatus, ModLogEntry, ModRuntimeInfo, ModRuntimeSnapshot } from './mods/types';
+import type { ModClearCacheResult, ModExportProgress, ModFfmpegStatus, ModLogEntry, ModRuntimeInfo, ModRuntimeSnapshot, ModStorageUsageResult } from './mods/types';
 
 declare global {
   // 当前文件：Folia 构建常量、Vite 环境变量与宿主桥接类型声明。
@@ -300,11 +300,6 @@ declare global {
     countdown: number | null;
     filePath: string | null;
     error: string | null;
-  }
-
-  interface ElectronWindowCaptureSource {
-    id: string;
-    name: string;
   }
 
   interface ElectronSaveDialogResult {
@@ -982,11 +977,15 @@ declare global {
         displayName?: string,
       ) => Promise<ElectronSaveDialogResult>;
       reportDevicePixelRatio: (ratio: number) => Promise<void>;
-      getMainWindowCaptureSource: () => Promise<ElectronWindowCaptureSource | null>;
       // Returns `false` when the resize could not be prepared, otherwise the resolved DPR.
-      prepareVideoExportWindow: (size: { width: number; height: number }) => Promise<false | { success: boolean; dpr: number }>;
+      prepareVideoExportWindow: (size: { width: number; height: number; dpr?: number }) => Promise<false | { success: boolean; dpr: number }>;
       restoreVideoExportWindow: () => Promise<boolean>;
-      writeVideoExportFile: (filePath: string, data: ArrayBuffer) => Promise<boolean>;
+      // Chunked export file writing: open returns a session id, chunks are appended in order,
+      // finish renames the partial file onto the chosen path, abort deletes it.
+      openVideoExportFile: (filePath: string) => Promise<string>;
+      appendVideoExportChunk: (sessionId: string, data: ArrayBuffer) => Promise<number>;
+      finishVideoExportFile: (sessionId: string) => Promise<{ filePath: string; bytesWritten: number; finalized: boolean }>;
+      abortVideoExportFile: (sessionId: string) => Promise<boolean>;
       getStageStatus: () => Promise<StageStatus>;
       setStageEnabled: (enabled: boolean) => Promise<StageStatus>;
       regenerateStageToken: () => Promise<StageStatus>;
@@ -1015,6 +1014,8 @@ declare global {
         getFfmpegStatus: () => Promise<{ ffmpeg: ModFfmpegStatus }>;
         openModsDirectory: () => Promise<{ ok: boolean; directory?: string; error?: string }>;
         installModFromZip: (zipPath: string) => Promise<{ ok: boolean; id?: string; error?: string }>;
+        getModStorageUsage: (modId: string) => Promise<ModStorageUsageResult>;
+        clearModCache: (modId: string) => Promise<ModClearCacheResult>;
         onModsStateChanged: (callback: (mods: ModRuntimeInfo[]) => void) => () => void;
         onExportProgress: (callback: (progress: ModExportProgress) => void) => () => void;
         onModLog: (callback: (entry: ModLogEntry) => void) => () => void;

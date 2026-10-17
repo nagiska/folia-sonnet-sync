@@ -52,20 +52,24 @@ const PlaybackSettingsSubview: React.FC<PlaybackSettingsSubviewProps> = ({
         enableTranscodeFallback,
         neteaseScrobbleEnabled,
         playbackFadeEnabled,
+        autoSkipUnplayable,
         queueAddBehavior,
         onToggleTranscodeFallback,
         onToggleNeteaseScrobble,
         onTogglePlaybackFade,
+        onToggleAutoSkipUnplayable,
         onQueueAddBehaviorChange,
     } = useAudioSettingsStore(useShallow(state => ({
         audioOutputDeviceId: state.audioOutputDeviceId,
         enableTranscodeFallback: state.enableTranscodeFallback,
         neteaseScrobbleEnabled: state.neteaseScrobbleEnabled,
         playbackFadeEnabled: state.playbackFadeEnabled,
+        autoSkipUnplayable: state.autoSkipUnplayable,
         queueAddBehavior: state.queueAddBehavior,
         onToggleTranscodeFallback: state.handleToggleTranscodeFallback,
         onToggleNeteaseScrobble: state.handleToggleNeteaseScrobble,
         onTogglePlaybackFade: state.handleTogglePlaybackFade,
+        onToggleAutoSkipUnplayable: state.handleToggleAutoSkipUnplayable,
         onQueueAddBehaviorChange: state.handleSetQueueAddBehavior,
     })));
     // Subscribed to rather than read once: the panel has to grey out the moment the NetEase account
@@ -218,6 +222,17 @@ const PlaybackSettingsSubview: React.FC<PlaybackSettingsSubviewProps> = ({
                                 </button>
                             );
                         })}
+                    </div>
+                    <div className="flex items-start justify-between gap-3 border-t border-current/10 pt-4">
+                        <div className="space-y-1">
+                            <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                                {t('options.autoSkipUnplayable')}
+                            </div>
+                            <div className="text-[11px] opacity-50 max-w-[420px]" style={{ color: 'var(--text-secondary)' }}>
+                                {t('options.autoSkipUnplayableDesc')}
+                            </div>
+                        </div>
+                        {renderToggle(autoSkipUnplayable, () => onToggleAutoSkipUnplayable(!autoSkipUnplayable))}
                     </div>
                 </div>
             </SettingsAnchor>
@@ -471,6 +486,7 @@ const PlaybackSettingsSubview: React.FC<PlaybackSettingsSubviewProps> = ({
                                 }}
                                 options={audioOutputOptions}
                                 onOpen={ensureAudioOutputDevicesLoaded}
+                                ariaLabel={t('options.audioOutputDevice')}
                                 disabled={isSelectingAudioOutput}
                                 isDaylight={isDaylight}
                                 theme={theme}

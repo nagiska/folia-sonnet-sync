@@ -375,6 +375,8 @@ export default {
     "songRegionRestricted": "仅限中国大陆地区播放，请检查网络环境",
     "songTemporarilyUnavailable": "暂时无法播放这首歌",
     "songTemporarilyUnavailableSignInHint": "暂时无法播放这首歌，登录后可能可以播放",
+    "songTemporarilyUnavailableMaybeMembership": "暂时无法播放这首歌，完整播放可能需要会员",
+    "songTemporarilyUnavailableMaybeRegion": "暂时无法播放这首歌，可能受所在地区限制",
     "songNetworkFailed": "连接失败，无法获取这首歌，请检查网络后重试",
     "songRequestTimedOut": "获取歌曲超时，请稍后重试",
     "songRetrying": "连接失败，正在重试…",
@@ -405,6 +407,7 @@ export default {
     "songUnavailableAlternativeDefaultType": "存在可播放的其他版本",
     "playAlternativeVersion": "播放其他版本",
     "playbackErrorPrompt": "播放出错，{{seconds}} 秒后自动跳过",
+    "songUnplayableSkipPrompt": "无法播放这首歌，{{seconds}} 秒后自动跳过",
     "skipUnavailableAction": "跳过",
     "cancel": "取消",
     "confirm": "确定",
@@ -826,6 +829,7 @@ export default {
       "settings-toggle-auto-play-on-launch": { "title": "进入应用后自动播放", "description": "切换打开应用时是否自动续播上次的歌曲" },
       "settings-toggle-transcode-fallback": { "title": "自动转换不支持的音频", "description": "切换 Electron 对 Chromium 无法解码的本地与 Navidrome 音频的恢复" },
       "settings-toggle-playback-fade": { "title": "暂停/播放淡入淡出", "description": "切换暂停和恢复播放时的短淡入淡出" },
+      "settings-toggle-auto-skip-unplayable": { "title": "无法播放时自动跳过", "description": "切换歌曲受限或原因不明无法播放时是否倒计时跳到下一首" },
       "settings-toggle-bottom-subtitle-overlay": { "title": "切换底部字幕层", "description": "显示或隐藏整个底部字幕层" },
       "settings-cycle-subtitle-content-mode": { "title": "切换翻译字幕状态", "description": "在翻译、罗马音、罗马音加翻译之间切换副字幕内容" },
       "settings-toggle-subtitle-background": { "title": "切换字幕背景", "description": "显示或隐藏提升字幕可读性的背景" },
@@ -837,6 +841,7 @@ export default {
   },
   "ui": {
     "noTrack": "无音轨",
+    "selectPlaceholder": "请选择...",
     "previousTrack": "上一首",
     "nextTrack": "下一首",
     "stageTrackPillNext": "接下来播放",
@@ -1055,6 +1060,8 @@ export default {
     }
   },
   "mods": {
+    "homeBackToLibrary": "返回书库",
+    "homePageNavigation": "首页页面",
     "title": "模组管理",
     "experimental": "实验性",
     "warning": "模组兼容版本Folium v{{version}}。标有「官方认证」的模组经过 Folium 官方审查并签名，其余模组由第三方提供，未经官方审查。无论是否认证，启用后模组将以应用的完整权限运行（含 Node.js 运行时与任意设置，如 AI 服务地址与密钥）。请仅启用可信来源的模组。",
@@ -1063,10 +1070,12 @@ export default {
     "devSourceHint": "开发目录中的模组：确认后修改文件不会撤销授权（仅开发版）。",
     "signatureVerified": "官方认证",
     "signatureVerifiedDetail": "带有有效的 Folium 官方签名（{{key}}）：来源与内容经过官方审查，签名后未被修改。它启用后仍以应用的完整权限运行。",
+    "signatureBeta": "先行测试",
+    "signatureBetaDetail": "由 Folium 先行测试密钥签名（{{key}}）：仅通过了安全审查，不保证功能实现的整洁，甚至功能可能完全无法工作。主要供社区开发者做创意实验，普通用户请勿轻易启用。它启用后仍以应用的完整权限运行。",
     "signatureUnsigned": "未验证",
     "signatureUnsignedDetail": "没有官方签名：这是未经 Folium 审查的第三方模组，请只启用你信任来源的模组。",
     "signatureInvalid": "签名不匹配",
-    "signatureInvalidDetail": "模组带有签名，但校验失败（{{reason}}），不再视为官方认证。通常是签名后文件被改动过；如果不是你自己改的，请不要启用。",
+    "signatureInvalidDetail": "模组带有签名，但校验失败（{{reason}}），这份签名不能作为审查依据。通常是签名后文件被改动过；如果不是你自己改的，请不要启用。",
     "signatureReasons": {
       "malformed": "签名文件格式错误",
       "unknown-key": "签名密钥不受信任",
@@ -1110,6 +1119,13 @@ export default {
     "dropZipHint": "将模组 zip 包拖到这里即可安装",
     "installing": "正在安装模组…",
     "installSuccess": "已安装模组：{{id}}（如需禁用或更新，可在列表中操作）",
+    "storageData": "数据 {{size}}",
+    "storageCache": "缓存 {{size}}",
+    "storageCacheBroken": "缓存目录已损坏（是文件或失效的链接），清空后恢复",
+    "clearCache": "清空缓存",
+    "clearingCache": "正在清空…",
+    "cacheCleared": "已清空「{{name}}」的缓存，释放了 {{size}}",
+    "cacheClearedUncounted": "已清空「{{name}}」的缓存",
     "errors": {
       "no-electron-bridge": "当前环境不支持模组系统",
       "open-directory-failed": "无法打开模组目录：{{value}}",
@@ -1137,7 +1153,10 @@ export default {
       "export-duration-too-long": "导出时间范围过长（最长 15 分钟）",
       "export-unsupported-platform": "当前平台不支持导出",
       "export-capture-empty": "帧捕获失败：渲染窗口返回了空白帧",
-      "export-cancelled": "导出已取消"
+      "export-cancelled": "导出已取消",
+      "storage-usage-failed": "无法统计该模组占用的空间",
+      "cache-clear-failed": "清空缓存失败",
+      "cache-clear-partial": "缓存未能全部清空：模组正在使用其中部分文件，停用模组后再试"
     },
     "warnings": {
       "export-alpha-unavailable": "当前平台未保留 Alpha 通道，视频为不透明底。请改用「主题背景色」+ 纯文字动画，或在 Windows 上导出。",
@@ -2521,6 +2540,8 @@ export default {
     "transcodeFallbackDesc": "Electron 中遇到 Chromium 无法解码的本地或 Navidrome 歌曲时，使用 FFmpeg 转换后原位恢复播放，不修改原文件。",
     "playbackFade": "暂停/播放淡入淡出",
     "playbackFadeDesc": "暂停前先短暂淡出声音，恢复播放时再淡入，而不是瞬间切断。音频未接入音频引擎时会直接暂停。",
+    "autoSkipUnplayable": "无法播放时自动跳过",
+    "autoSkipUnplayableDesc": "歌曲需要会员或购买、只能试听、所在地区不可播放，或原因不明无法播放时，像已下架的歌曲一样倒计时后跳到下一首。需要登录的歌曲和网络问题不会跳过。",
     "audioOutputDevice": "当前播放声卡",
     "audioOutputDeviceDesc": "切换当前播放器的音频输出设备。在支持 setSinkId 时可使用。",
     "audioOutputRefresh": "刷新",
@@ -2566,6 +2587,7 @@ export default {
     "openaiApiKey": "密钥",
     "aiApiKeySavedPlaceholder": "已保存（留空则保持不变）",
     "aiApiKeySavedDesc": "密钥已加密保存在本机，不会再显示。输入新密钥并保存可替换。",
+    "aiApiKeyEndpointMismatchDesc": "已保存的密钥只会发往 {{endpoint}}。换用其他地址需要重新输入密钥。",
     "aiApiKeyClear": "清除",
     "openaiApiUrl": "OpenAI 接口链接",
     "openaiApiModel": "模型",
@@ -3019,6 +3041,33 @@ export default {
       "qqPrivatePlaylists": {
         "title": "QQ 音乐不公开歌单",
         "description": "登录后，自己创建的不公开歌单也能读取歌曲，并支持真正的分页加载。自建后端需要升级到 qq-music-api 3.1.2 或更新版本；旧后端会自动回退，读不到时会明确提示「不是公开歌单」，不再静默显示为空。"
+      }
+    },
+    "v0_7_20": {
+      "intro": "0.7.20 让 QQ 音乐补上了推荐、红心、收藏和歌单编辑；新增「无法播放时自动跳过」；桌面版的视频导出更可靠，大视频和 Linux 下都能正常录制；Intel Mac 也能用上人声分离；模组可以在首页添加自己的页面。",
+      "qqMusic": {
+        "title": "QQ 音乐功能补全",
+        "description": "QQ 音乐登录后有了每日推荐、私人 FM 和推荐歌单（推荐歌单不登录也能看）；可以红心歌曲、收藏歌单和专辑，往自己创建的歌单里加歌、删歌，「我喜欢」里删歌就是取消红心。播放失败时如果可能是会员或地区限制，会给出带「可能」的提示。QQ 暂不支持「不喜欢」，私人 FM 的垃圾桶按钮会置灰。"
+      },
+      "autoSkip": {
+        "title": "无法播放时自动跳过",
+        "description": "播放设置的队列卡片里新增「无法播放时自动跳过」（默认关闭）。打开后，需要会员或购买、只能试听、地区不可播放或原因不明的歌曲，会像已下架的歌一样倒计时后跳到下一首；需要登录的歌和网络问题仍会停下来等你处理。也可以在命令面板里切换。"
+      },
+      "videoExport": {
+        "title": "视频导出更可靠",
+        "description": "桌面版导出视频改为边录边写入磁盘，4K 等大文件不再在最后一步失败；改为直接录制 Folia 自己的页面，Linux（包括 Wayland）下不再找不到录制源，窗口被遮挡也照样录得到，4K 录制帧率明显提升。导出的 MP4 现在能正确显示时长。"
+      },
+      "automixIntelMac": {
+        "title": "Intel Mac 支持人声分离",
+        "description": "自动混音用到的人声分离模型现在也能在 Intel Mac（macOS 13 及以上）上运行，其它平台的分离速度也略有提升。"
+      },
+      "modHomePages": {
+        "title": "模组可以在首页添加页面",
+        "description": "Folium 1.5：模组可以在首页添加自己的页面，与原生页签并列切换；能读取和调整音量、静音、循环模式，查看并点播播放队列，还能感知播放失败。模组面板会显示每个模组占用的空间，可以一键清空缓存；模组设置里的下拉框换成与 Folia 一致的样式。社区「先行测试」渠道的模组会以紫色标记，并在启用前提示风险。"
+      },
+      "stabilityFixes": {
+        "title": "更稳定的细节",
+        "description": "Bravais 首页的设置格在有新版本时会提示；在 Bravais 首页搜索不再一直显示无结果，也不再在酷狗、QQ 下搜错平台；修复部分 Linux 发行版上竖排中文标签叠在一起；歌手 / 专辑海报翻走时不再闪回默认配色。桌面版收紧了外部链接与内部通信的安全检查，AI 密钥只会发往保存时的地址。"
       }
     },
     "v0_7_19": {

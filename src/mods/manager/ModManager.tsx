@@ -351,6 +351,7 @@ export const ModManager: React.FC<ModManagerProps> = ({ classes, isDaylight, the
                         onToggleExpand={() => selectMod(selectedModId === mod.id ? null : mod.id)}
                         onToggleEnabled={() => { void handleToggleEnabled(mod.id, !mod.enabled); }}
                         onToggleSelected={() => toggleSelected(mod.id)}
+                        onNotice={setNotice}
                     />
                 ))}
                 {mods.length === 0 ? (

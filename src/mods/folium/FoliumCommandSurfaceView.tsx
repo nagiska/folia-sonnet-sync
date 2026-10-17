@@ -66,6 +66,8 @@ const FoliumCommandSurfaceView: React.FC<FoliumCommandSurfaceViewProps> = ({ com
                     values={values}
                     disabled={running}
                     token={token}
+                    theme={theme}
+                    isDaylight={isDaylight}
                     onChange={(param, value) => setValues((previous) => ({ ...previous, [param.key]: value }))}
                 />
             </div>

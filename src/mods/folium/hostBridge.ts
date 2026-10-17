@@ -11,8 +11,10 @@ import {
     selectIsShowingTail,
 } from '@/stores/usePlaybackStore';
 import { useVisualizerSettingsStore } from '@/stores/useVisualizerSettingsStore';
+import { useAudioSettingsStore } from '@/stores/useAudioSettingsStore';
 import { currentTime } from '@/stores/motionSignals';
 import { getPlaybackSongKey } from '@/utils/appPlaybackGuards';
+import { clampMediaVolume } from '@/utils/appPlaybackHelpers';
 import type { VisualizerTuningBundle } from '@/components/visualizer/tuningRegistry';
 import { isModsBridgeAvailable, pushRuntimeSnapshot } from '../ipc';
 import type { FoliumPlaybackState } from './contract';
@@ -46,6 +48,11 @@ export const useFoliumHostBridge = (theme: Theme, isDaylight: boolean) => {
     const playerState = usePlaybackStore(selectDisplayPlayerState);
     const duration = usePlaybackStore(selectDisplayDuration);
     const visualizerMode = useVisualizerSettingsStore((state) => state.visualizerMode);
+    // Folium 1.5 snapshot fields. The store is written on commit (not while a slider drags), so
+    // each change re-pushes the snapshot once.
+    const volume = useAudioSettingsStore((state) => state.volume);
+    const muted = useAudioSettingsStore((state) => state.isMuted);
+    const loopMode = useAudioSettingsStore((state) => state.loopMode);
     // Lift the current visualizer tunings from the settings store so exports can
     // reproduce the song's animation verbatim (rather than the default settings).
     const visualizerTunings = useVisualizerSettingsStore(useShallow((state) => ({
@@ -177,6 +184,9 @@ export const useFoliumHostBridge = (theme: Theme, isDaylight: boolean) => {
                     lines: [...toFoliumLines(lyrics?.lines)],
                     theme: toFoliumTheme(theme, isDaylight),
                     visualizerMode: visualizerMode ?? null,
+                    volume: clampMediaVolume(volume),
+                    muted,
+                    loopMode,
                 },
                 internal: {
                     lyricData: lyrics ?? null,
@@ -189,5 +199,5 @@ export const useFoliumHostBridge = (theme: Theme, isDaylight: boolean) => {
             });
         }, PUSH_DEBOUNCE_MS);
         return () => window.clearTimeout(timer);
-    }, [song, lyrics, playerState, duration, theme, isDaylight, visualizerMode, visualizerTunings, foliumParams, seekRevision]);
+    }, [song, lyrics, playerState, duration, theme, isDaylight, visualizerMode, visualizerTunings, foliumParams, seekRevision, volume, muted, loopMode]);
 };

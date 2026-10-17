@@ -20,10 +20,11 @@ export interface ModLabelMap {
  * Official signature state (electron/modSystem/modSignature.cjs). A label only:
  * it never enables a mod or skips the enable confirmation.
  *   - verified: signed by a Folium key over exactly the files on disk;
+ *   - beta:     the same, by a preview-channel key: security-reviewed only, may not work;
  *   - unsigned: no signature (an unreviewed third-party mod);
  *   - invalid:  a signature that does not check out (see `reason`).
  */
-export type ModSignatureStatus = 'verified' | 'unsigned' | 'invalid';
+export type ModSignatureStatus = 'verified' | 'beta' | 'unsigned' | 'invalid';
 
 export type ModSignatureInvalidReason =
     | 'malformed'
@@ -131,6 +132,33 @@ export interface ModsListPayload {
     mods: ModRuntimeInfo[];
     ffmpeg: ModFfmpegStatus;
     directories: string[];
+}
+
+/**
+ * A mod's disk usage in bytes, for the mods panel (`folia-mods:storage-usage`). `data` is all of
+ * `mods-data/<id>` (the storage file and `paths.data`), `cache` is `mods-cache/<id>`; a missing
+ * directory counts 0. Works for disabled mods too.
+ */
+export interface ModStorageUsageResult {
+    ok: boolean;
+    data?: number;
+    cache?: number;
+    /**
+     * Only when true: `mods-cache/<id>` is a stray file or a dead link. It counts 0, but `paths.cache`
+     * throws on every read until "clear cache" removes the entry.
+     */
+    cacheBroken?: boolean;
+    error?: string;
+}
+
+/**
+ * The mods panel's "clear cache" (`folia-mods:clear-cache`): `cleared` entries removed from the top of
+ * `mods-cache/<id>`, which itself stays. `cache-clear-partial` when a running mod held some open.
+ */
+export interface ModClearCacheResult {
+    ok: boolean;
+    cleared?: number;
+    error?: string;
 }
 
 /*

@@ -2,7 +2,6 @@ import { useLatticeControlsStore } from '../stores/useLatticeControlsStore';
 import { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { selectDisplayLyrics, selectDisplayPlayerState, usePlaybackStore } from '../stores/usePlaybackStore';
-import { useSearchNavigationStore } from '../stores/useSearchNavigationStore';
 import { setIsPanelOpen, setPanelTab, useAppViewStore } from '../stores/useAppViewStore';
 import { useGridSurfaceStore } from '../stores/useGridSurfaceStore';
 import { useLibraryDirectorySurfaceStore } from '../library/core/state/useLibraryDirectorySurfaceStore';
@@ -37,6 +36,7 @@ import { useLyricSegmentationStore } from '../stores/useLyricSegmentationStore';
 import { useLatticeSettingsStore } from '../stores/useLatticeSettingsStore';
 import { useInteractionSettingsStore } from '../stores/useInteractionSettingsStore';
 import type { LyricSegmentationActions } from '../components/app/playback/createLyricSegmentationActions';
+import { selectNativeHomeTabWithoutSurface } from '../components/app/home/foliumHomePageDismissal';
 
 // src/hooks/useCommandPaletteContext.ts
 // Assembles the command palette's namespaced context.
@@ -54,7 +54,7 @@ import type { LyricSegmentationActions } from '../components/app/playback/create
 const AMBIENT_KEYS = [
     't', 'currentSong', 'lyrics', 'playerState',
     'queue', 'isFmMode',
-    'setHomeViewTab', 'setPanelTab', 'setIsPanelOpen',
+    'selectHomeViewTab', 'setPanelTab', 'setIsPanelOpen',
 ] as const;
 
 type AmbientKey = (typeof AMBIENT_KEYS)[number];
@@ -78,7 +78,6 @@ export const useCommandPaletteContext = (
     const queue = usePlaybackStore(state => state.playQueue);
     const isFmMode = usePlaybackStore(state => state.isFmMode);
     const queuePaletteKeepOpen = useInteractionSettingsStore(state => state.queuePaletteKeepOpen);
-    const setHomeViewTab = useSearchNavigationStore(state => state.setHomeViewTab);
     // What is on screen, transitions included: surfaces that publish lyrics (the mod runtime
     // snapshot) must send the rendered ones, not a guess rebuilt from the song's stored state.
     const lyrics = usePlaybackStore(selectDisplayLyrics);
@@ -95,10 +94,11 @@ export const useCommandPaletteContext = (
         playerState,
         queue,
         isFmMode,
-        setHomeViewTab,
+        // 首页 surface 不在时选原生页签：写 homeViewTab，并关掉开着的模组首页页面（见 foliumHomePageDismissal）。
+        selectHomeViewTab: selectNativeHomeTabWithoutSurface,
         setPanelTab,
         setIsPanelOpen,
-    }), [t, currentSong, lyrics, playerState, queue, isFmMode, setHomeViewTab]);
+    }), [t, currentSong, lyrics, playerState, queue, isFmMode]);
 
     // Narrow subscriptions: these are the store fields the palette displays or gates on.
     const settingsSignals = useTypographySettingsStore(useShallow(state => ({

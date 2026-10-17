@@ -24,6 +24,8 @@ import { useLibraryTuiHomePageKeys } from './useLibraryTuiHomeKeyboard';
 // 在线页签未登录时是平台列表（LibraryTuiAccountList），已登录时 F2 打开它（切换平台、登出）；扫码登录框与切换确认由
 // TUI 的 account surface（LibraryTuiAccount）画。更新徽标、搜索框、舞台入口属于网格的首页外观，这里不做。
 // 这里不引用网格的任何实现。
+// 宿主的扩展页签（extraTabs，模组的首页页面）在 TUI 里不画入口（页面只能经 ui.openHomeTab 打开）；但页面开着时
+// 选原生页签照契约通知宿主（onNativeTabSelected），命令面板重选当前页签也能关掉页面。
 
 type SectionTab = { key: string; label: string; active: boolean; disabledReason?: string };
 
@@ -66,6 +68,8 @@ const LibraryTuiHome: React.FC<LibraryHomeSurfaceProps> = (props) => {
     const selectTab = (key: LibraryHomeTabKey) => {
         const target = tabs.find(candidate => candidate.key === key);
         if (!target || target.disabledReason) return false;
+        // 与 Grid3D / BravaisHome 相同：原生页签接手时通知宿主（重选当前页签也通知），开着的模组首页页面随之关掉。
+        props.onNativeTabSelected?.();
         setPrompt(null);
         if (key !== tab) setAccountsOpen(false);
         setTab(key);
