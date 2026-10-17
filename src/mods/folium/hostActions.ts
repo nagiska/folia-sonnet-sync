@@ -8,12 +8,15 @@ import {
     selectDisplaySong,
 } from '@/stores/usePlaybackStore';
 import { useAppViewStore } from '@/stores/useAppViewStore';
+import { useAudioSettingsStore } from '@/stores/useAudioSettingsStore';
 import { setStatusMessage } from '@/stores/useStatusMessageStore';
 import { currentTime } from '@/stores/motionSignals';
 import type { PanelTab } from '@/components/UnifiedPanel';
+import { clampMediaVolume } from '@/utils/appPlaybackHelpers';
 import { resolveLikeAvailability } from '@/utils/playerLikeAvailability';
 import { resolveFoliumSongRef, toFoliumSong } from './dto';
 import { emitFoliumEvent } from './events';
+import { buildFoliumQueueSnapshot, resolveFoliumQueuePlayRequest } from './hostQueue';
 import { registerFoliumHostActions } from './services';
 
 // src/mods/folium/hostActions.ts
@@ -30,6 +33,12 @@ export interface FoliumAppActions {
     next: () => void;
     previous: () => void;
     playSong: (song: SongResult) => void | Promise<void>;
+    /**
+     * playQueueItem: plays `song` within `queue`, which must be the store's playQueue array itself
+     * (the queue controller then retries and skips a failure against the live queue), keeping
+     * Personal FM on when `isFm`.
+     */
+    playQueueSong: (song: SongResult, queue: SongResult[], isFm: boolean) => void | Promise<void>;
     enqueue: (song: SongResult) => void;
     navigateToPlayer: () => void;
     navigateToHome: () => void;
@@ -102,6 +111,23 @@ export const useFoliumHostActions = (actions: FoliumAppActions) => {
             toggleLike: () => {
                 if (!canLike(usePlaybackStore.getState())) return false;
                 void actionsRef.current.toggleLike();
+                return true;
+            },
+            // Volume, mute and repeat are store state; App's audio gain follows the store on its own.
+            getVolume: () => {
+                const audio = useAudioSettingsStore.getState();
+                return { volume: clampMediaVolume(audio.volume), muted: audio.isMuted };
+            },
+            setVolume: (volume) => useAudioSettingsStore.getState().handleSetVolume(volume),
+            setMuted: (muted) => useAudioSettingsStore.getState().handleSetMuted(muted),
+            getLoopMode: () => useAudioSettingsStore.getState().loopMode,
+            // Not gated on Stage playback, like the remote window's repeat button: the mode is a lasting preference.
+            setLoopMode: (mode) => useAudioSettingsStore.getState().handleSetLoopMode(mode),
+            getQueue: (offset, limit) => buildFoliumQueueSnapshot(usePlaybackStore.getState(), offset, limit),
+            playQueueItem: async (index, expectedRef) => {
+                const request = resolveFoliumQueuePlayRequest(usePlaybackStore.getState(), index, expectedRef);
+                if (!request) return false;
+                await actionsRef.current.playQueueSong(request.song, request.queue, request.isFm);
                 return true;
             },
             toast: (message, type, durationMs) => setStatusMessage({ type, text: message, ...(durationMs ? { durationMs } : {}) }),

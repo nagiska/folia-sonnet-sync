@@ -53,7 +53,12 @@ const MOD_PANEL_FIELD_TOKENS: Record<'day' | 'night', FoliumParamFieldToken> = {
     },
 };
 
-const ModCommandCard: React.FC<{ modId: string; entry: FoliumRegistryEntry<StoredFoliumCommand>; isDaylight: boolean }> = ({ modId, entry, isDaylight }) => {
+const ModCommandCard: React.FC<{
+    modId: string;
+    entry: FoliumRegistryEntry<StoredFoliumCommand>;
+    theme: Theme;
+    isDaylight: boolean;
+}> = ({ modId, entry, theme, isDaylight }) => {
     const { t, i18n } = useTranslation();
     const exportedProgress = useModsStore((state) => state.exportProgress);
     const cancelActiveExport = useModsStore((state) => state.cancelActiveExport);
@@ -109,6 +114,8 @@ const ModCommandCard: React.FC<{ modId: string; entry: FoliumRegistryEntry<Store
                         values={values}
                         disabled={isRunning}
                         token={MOD_PANEL_FIELD_TOKENS[isDaylight ? 'day' : 'night']}
+                        theme={theme}
+                        isDaylight={isDaylight}
                         onChange={updateParam}
                     />
                 </div>
@@ -195,7 +202,7 @@ export const ModSurfaceRenderer: React.FC<ModSurfaceRendererProps> = ({ modId, t
                 controlCardBg={isDaylight ? 'rgba(0,0,0,0.03)' : 'rgba(0,0,0,0.2)'}
             />
             {own.map((entry) => (
-                <ModCommandCard key={entry.id} modId={modId} entry={entry} isDaylight={isDaylight} />
+                <ModCommandCard key={entry.id} modId={modId} entry={entry} theme={theme} isDaylight={isDaylight} />
             ))}
         </div>
     );

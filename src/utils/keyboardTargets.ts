@@ -1,3 +1,5 @@
+import { isPrimaryModifierPressed, isSecondaryModifierPressed } from './platform';
+
 // src/utils/keyboardTargets.ts
 // 全局快捷键的两个通用守卫：正在打字吗、有没有窗口接管了键盘。
 //
@@ -64,3 +66,18 @@ export const effectiveKeyCode = (event: KeyboardEvent): string => {
     // 命名键（Escape / ArrowLeft / Tab / Enter 等）的 key 与 code token 同名，直接用。
     return key;
 };
+
+/**
+ * 这一下是不是打开命令面板的 Ctrl+K（macOS 上是 Cmd+K）。
+ *
+ * 命令面板自己的监听器与「接管了键盘、但要给命令面板放行」的界面（模组的首页页面）共用这一个判定，
+ * 两边不会对同一次按键得出不同结论。软件注入的按键可能没有 event.code，所以同时认 event.key。
+ * 放在 utils 而不是 useCommandPalette：后者会拉进整个 commandRegistry（见文件头）。
+ */
+export const isCommandPaletteShortcut = (event: KeyboardEvent): boolean => (
+    (effectiveKeyCode(event) === 'KeyK' || event.key.toLowerCase() === 'k')
+    && isPrimaryModifierPressed(event)
+    && !isSecondaryModifierPressed(event)
+    && !event.altKey
+    && !event.shiftKey
+);

@@ -15,7 +15,7 @@ import { useInteractionSettingsStore } from '../../stores/useInteractionSettings
 import { resolveCustomShortcutCommand } from './customShortcut';
 
 // src/components/command-palette/useCommandPalette.ts
-import { effectiveKeyCode, isTextEntryTarget } from '../../utils/keyboardTargets';
+import { effectiveKeyCode, isCommandPaletteShortcut, isTextEntryTarget } from '../../utils/keyboardTargets';
 
 // Manages palette state, keyboard opening, and selected autocomplete item.
 
@@ -511,7 +511,7 @@ export const useCommandPalette = ({
 
             // Works everywhere, because it carries a modifier.
             // Software-injected shortcuts may provide the key without a physical key code.
-            if ((effectiveKeyCode(event) === 'KeyK' || event.key.toLowerCase() === 'k') && isPrimaryModifierPressed(event) && !event.altKey && !event.shiftKey && !isSecondaryModifierPressed(event)) {
+            if (isCommandPaletteShortcut(event)) {
                 if (isBlocked) {
                     return;
                 }

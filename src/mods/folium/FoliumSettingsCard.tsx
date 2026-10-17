@@ -162,6 +162,8 @@ export const FoliumSettingsCard: React.FC<FoliumSettingsCardProps> = ({
                         values={values}
                         token={token}
                         booleanLabels={{ on: t('options.modVisualizerSettingsOn'), off: t('options.modVisualizerSettingsOff') }}
+                        theme={theme}
+                        isDaylight={isDaylight}
                         onChange={handleChange}
                     />
                 </div>

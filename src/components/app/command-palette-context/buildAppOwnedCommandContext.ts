@@ -38,7 +38,7 @@ export type PlaybackCommandContextDeps = Pick<
 
 export type NavigationCommandContextDeps = Pick<
     CommandPaletteContext['navigation'],
-    | 'navigateToHome' | 'navigateToPlayer' | 'navigateToLattice' | 'setHomeViewTab' | 'toggleBrowserFullscreen'
+    | 'navigateToHome' | 'navigateToPlayer' | 'navigateToLattice' | 'selectHomeViewTab' | 'toggleBrowserFullscreen'
     | 'toggleRemoteControlWindow' | 'toggleMainWindowAlwaysOnTop'
 >;
 

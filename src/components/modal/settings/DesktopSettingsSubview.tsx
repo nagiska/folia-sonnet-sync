@@ -22,6 +22,7 @@ import AiConnectionTest from './AiConnectionTest';
 import SettingsRow, { SettingsToggle } from './SettingsRow';
 import { settingsDividerClassFor } from './settingsCardClasses';
 import { usePlayerChromeSettingsStore } from '../../../stores/usePlayerChromeSettingsStore';
+import { openAIEndpointOf } from '../../../utils/openAIEndpoint';
 
 // src/components/modal/settings/DesktopSettingsSubview.tsx
 // Desktop-only window, tray, update, and AI settings separated from the global settings modal.
@@ -91,6 +92,8 @@ export type DesktopSettingsModel = {
     onSaveElectronSettings: () => Promise<void> | void;
     onClearAiApiKey: (key: AiApiKeyName) => Promise<void> | void;
     savedAiApiKeys: Record<AiApiKeyName, boolean>;
+    /** Endpoint the saved OpenAI-compatible key is bound to, or null when none is saved. */
+    savedOpenAIKeyEndpoint: string | null;
     onToggleAutoUpdate: () => Promise<void> | void;
     onToggleUpdateCheck: () => Promise<void> | void;
     setElectronSettings: React.Dispatch<React.SetStateAction<ElectronSettingsState>>;
@@ -155,6 +158,7 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
         onSaveElectronSettings,
         onClearAiApiKey,
         savedAiApiKeys,
+        savedOpenAIKeyEndpoint,
         onToggleAutoUpdate,
         onToggleUpdateCheck,
         setElectronSettings,
@@ -220,6 +224,14 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
     // "saved" placeholder, typing replaces it on save, and Clear removes it right away.
     const renderApiKeyField = (key: AiApiKeyName, label: React.ReactNode, placeholder: string) => {
         const saved = savedAiApiKeys[key];
+        // The saved OpenAI-compatible key is only sent to the endpoint it was saved for; say so while
+        // the URL in the form points elsewhere and no replacement key has been typed.
+        const boundEndpoint = key === 'OPENAI_API_KEY'
+            && savedOpenAIKeyEndpoint
+            && !(electronSettings.OPENAI_API_KEY || '').trim()
+            && openAIEndpointOf(electronSettings.OPENAI_API_URL) !== savedOpenAIKeyEndpoint
+            ? savedOpenAIKeyEndpoint
+            : null;
         return renderField(
             label,
             <div className="flex items-center gap-2">
@@ -243,7 +255,9 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                     </button>
                 )}
             </div>,
-            saved ? t('options.aiApiKeySavedDesc') : undefined,
+            boundEndpoint
+                ? t('options.aiApiKeyEndpointMismatchDesc', { endpoint: boundEndpoint })
+                : saved ? t('options.aiApiKeySavedDesc') : undefined,
         );
     };
 

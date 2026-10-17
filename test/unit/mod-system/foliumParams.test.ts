@@ -4,6 +4,7 @@ import {
     filterFoliumParamPatch,
     mergeFoliumParamValues,
     resolveFoliumParamStep,
+    resolveFoliumSelectDisplayValue,
     sanitizeFoliumParams,
 } from '@/mods/folium/params';
 import type { FoliumParam } from '@/mods/folium/contract';
@@ -100,5 +101,20 @@ describe('resolveFoliumParamStep', () => {
         expect(resolveFoliumParamStep({})).toBe(1);
         expect(resolveFoliumParamStep({ min: 0.6, max: 1.4 })).toBe(0.01);
         expect(resolveFoliumParamStep({ min: 0, max: 99.9 })).toBe(0.01);
+    });
+});
+
+describe('resolveFoliumSelectDisplayValue', () => {
+    const options = [{ value: 'a', label: {} }, { value: 'b', label: {} }];
+
+    it('shows a listed stored value as is', () => {
+        expect(resolveFoliumSelectDisplayValue({ options, defaultValue: 'a' }, 'b')).toBe('b');
+    });
+
+    it('falls back to a listed default, else to the first option', () => {
+        expect(resolveFoliumSelectDisplayValue({ options, defaultValue: 'b' }, 'gone')).toBe('b');
+        expect(resolveFoliumSelectDisplayValue({ options, defaultValue: 'unlisted' }, undefined)).toBe('a');
+        expect(resolveFoliumSelectDisplayValue({ options }, 3)).toBe('a');
+        expect(resolveFoliumSelectDisplayValue({ options: [] }, 'x')).toBe('');
     });
 });

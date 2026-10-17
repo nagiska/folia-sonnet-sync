@@ -413,6 +413,13 @@ const foldsDiagnostics = suite !== 'tui';
 const failureHelpEntry = (page: Page) => (foldsDiagnostics
     ? loginDialog(page).getByRole('button', { name: 'Still not working? Send us the diagnostics' })
     : diagnosticsButton(page));
+// 不管反馈去向、只问「诊断给没给」的入口：否定断言都用它，换了去向也不会空过。探针页没有 Electron 桥，
+// 报告环境按网页版算（useLibraryAccount 的 LOGIN_REPORT_ENVIRONMENT），要码就失败会被当成部署问题，
+// 展开项换成「See diagnostics」；探针用 store 模拟的内嵌后端只在桌面版存在，桌面版走「Send us」
+// 由单测 qrLoginFailureHelpPresentation 覆盖。
+const anyFailureHelpEntry = (page: Page) => (foldsDiagnostics
+    ? loginDialog(page).getByRole('button', { name: /^Still not working\?/ })
+    : diagnosticsButton(page));
 const tipsList = (page: Page) => loginDialog(page).getByText('Restart Folia, then scan again.');
 
 test.describe(`[${suite}] switching`, () => {
@@ -602,7 +609,7 @@ test.describe(`[${suite}] signing in`, () => {
         // 后端报过期（没扫过）：不算失败；重试沿用已选的方式，并取消过期的那个会话。
         await scriptQr(page, ACCOUNT_QUILL, ['expired']);
         await expect(statusText(page, 'expired')).toBeVisible();
-        await expect(failureHelpEntry(page)).toHaveCount(0);
+        await expect(anyFailureHelpEntry(page)).toHaveCount(0);
         await driver.retry(page);
         await expect.poll(() => calls(page, 'create', ACCOUNT_QUILL)).toHaveLength(3);
         expect((await calls(page, 'create', ACCOUNT_QUILL))[2].methodId).toBe('wechat');
@@ -629,7 +636,7 @@ test.describe(`[${suite}] QR lifetime`, () => {
         await expect(statusText(page, 'expired')).toBeVisible();
         await expect.poll(() => calls(page, 'cancel')).toEqual([expect.objectContaining({ providerId: ACCOUNT_GAMMA, key })]);
         await expect(retryButton(page)).toBeVisible();
-        await expect(failureHelpEntry(page)).toHaveCount(0);
+        await expect(anyFailureHelpEntry(page)).toHaveCount(0);
         // 到点即停：之后不再轮询。
         const checks = await countCalls(page, 'check');
         await page.waitForTimeout(2_500);
@@ -662,7 +669,7 @@ test.describe(`[${suite}] QR lifetime`, () => {
         await scriptQr(page, ACCOUNT_GAMMA, ['scanned', 'expired']);
         await driver.retry(page);
         await expect(statusText(page, 'scanned')).toBeVisible();
-        await expect(failureHelpEntry(page)).toHaveCount(0);
+        await expect(anyFailureHelpEntry(page)).toHaveCount(0);
         await expect(statusText(page, 'expired')).toBeVisible();
         await expect(failureHelpEntry(page)).toBeVisible();
     });
@@ -680,7 +687,7 @@ test.describe(`[${suite}] QQ diagnostics`, () => {
         await driver.selectProvider(page, ACCOUNT_GAMMA);
         await expect(loginDialog(page).getByText(/^Login was canceled on your phone\. You can get a new QR code in \d+s\.$/)).toBeVisible();
         // 用户自己取消的，没有要排查的东西。
-        await expect(failureHelpEntry(page)).toHaveCount(0);
+        await expect(anyFailureHelpEntry(page)).toHaveCount(0);
         // 冷却中：网格与 bravais 的重试按钮在但不能点（bravais 还显示秒数）；TUI 不给重试，Enter 不要码。
         if (suite !== 'tui') {
             await expect(retryButton(page)).toBeDisabled();
@@ -839,7 +846,7 @@ test.describe(`[${suite}] NetEase backend`, () => {
         // 报告里有拉起的每一步与错误原文，重启解决不了时用户可以直接反馈。
         await expect.poll(() => countCalls(page, 'create', ACCOUNT_NETEASE)).toBe(1);
         await expect(retryButton(page)).toHaveCount(0);
-        await expect(failureHelpEntry(page)).toBeVisible();
+        await expect(anyFailureHelpEntry(page)).toBeVisible();
         await expect(statusText(page, 'error')).toHaveCount(0);
         await expect(qrImage(page)).toHaveCount(0);
 

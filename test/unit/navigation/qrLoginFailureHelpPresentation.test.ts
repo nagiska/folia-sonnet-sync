@@ -86,6 +86,10 @@ describe('QR login failure help presentation', () => {
         expect(unofficial.failureTips?.escalation).toBe('home.qrDiagnosticsToggleElsewhere');
         expect(translateLoginSession(t, session('netease', 'start-error'), 'netease', { build: 'self-hosted', web: true }).reportElsewhereNote)
             .toBe('home.qrReportWebDeployment');
+        // 桌面版内嵌后端起不来也是 start-error，但那不是部署问题：照常去本仓库反馈（组件用例的探针按网页版跑，覆盖不到这条）。
+        const desktop = translateLoginSession(t, session('netease', 'start-error'), 'netease', { build: 'official', web: false });
+        expect(desktop.reportElsewhereNote).toBeNull();
+        expect(desktop.failureTips?.escalation).toBe('home.qrDiagnosticsToggle');
         const failureHelp = buildQrLoginFailureHelpProps({
             t, providerId: 'qq', failure: 'check-error', tips: { title: '', items: [], escalation: '' },
             reportElsewhereNote: 'home.qrReportUnofficialBuild', buildReport: async () => 'report',

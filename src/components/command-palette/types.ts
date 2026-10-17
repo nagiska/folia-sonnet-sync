@@ -197,7 +197,12 @@ export type CommandPaletteNavigationContext = {
     navigateToLattice: () => void;
     focusLatticeCurrentSong: () => boolean;
     canFocusLatticeCurrentSong: boolean;
-    setHomeViewTab: (tab: HomeViewTab) => void;
+    /**
+     * Selects a native home tab without the home surface's tab handle: none is registered while no home surface
+     * is mounted (Lattice, or the player view once home is hidden), or the handle refused the tab. The host also
+     * dismisses an open mod home page, as the mounted surface's handle does even when reselecting the current tab.
+     */
+    selectHomeViewTab: (tab: HomeViewTab) => void;
     toggleBrowserFullscreen: () => Promise<boolean>;
     toggleRemoteControlWindow: () => Promise<boolean>;
     toggleMainWindowAlwaysOnTop: () => Promise<boolean>;
@@ -294,6 +299,8 @@ export type CommandPaletteSettingsContext = {
     toggleTranscodeFallback: () => void;
     /** Whether pause and resume fade the sound out and in. */
     togglePlaybackFade: () => void;
+    /** Whether restricted songs and unknown failures count down to a skip, like taken-down ones. */
+    toggleAutoSkipUnplayable: () => void;
     /**
      * Whether this build can watch the imported local folders at all. A getter because the answer
      * is a runtime API check (FileSystemObserver) rather than a stored value, and the settings

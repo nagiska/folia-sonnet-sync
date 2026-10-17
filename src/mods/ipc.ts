@@ -1,9 +1,11 @@
 import type {
+    ModClearCacheResult,
     ModFfmpegStatus,
     ModLogEntry,
     ModRuntimeInfo,
     ModRuntimeSnapshot,
     ModSetEnabledResult,
+    ModStorageUsageResult,
     ModsListPayload,
     ModExportProgress,
 } from './types';
@@ -144,6 +146,18 @@ export const installModFromZip = async (
     zipPath: string,
 ): Promise<{ ok: boolean; id?: string; error?: string }> => {
     const response = await bridge()?.installModFromZip(zipPath);
+    return response ?? { ok: false, error: 'no-electron-bridge' };
+};
+
+/** Bytes a mod keeps on disk (data and cache); disabled mods included, broken entries refused. */
+export const getModStorageUsage = async (modId: string): Promise<ModStorageUsageResult> => {
+    const response = await bridge()?.getModStorageUsage(modId);
+    return response ?? { ok: false, error: 'no-electron-bridge' };
+};
+
+/** Empties a mod's cache directory (`api.storage.paths.cache`); the directory itself stays. */
+export const clearModCache = async (modId: string): Promise<ModClearCacheResult> => {
+    const response = await bridge()?.clearModCache(modId);
     return response ?? { ok: false, error: 'no-electron-bridge' };
 };
 

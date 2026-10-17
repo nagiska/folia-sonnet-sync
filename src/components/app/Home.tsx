@@ -7,6 +7,9 @@ import { useLibrarySuiteStore } from '../../library/core/state/useLibrarySuiteSt
 import { useLibraryDirectoryBatchController } from '../../library/app/useLibraryDirectoryBatchController';
 import { useLibraryHomeResources } from '../../library/app/useLibraryHomeResources';
 import type { HomeViewModel } from './home/buildHomeModel';
+import { useFoliumHomeNavigation } from './home/useFoliumHomeNavigation';
+import { closeFoliumHomeTab } from '../../mods/folium/registries/homeTabs';
+import { FoliumHomePage } from './home/FoliumHomePage';
 import { countRender } from '../../dev/renderCount';
 
 // App-level entry for the home surface backed by a view model.
@@ -20,6 +23,8 @@ type AppHomeProps = {
 
 const Home: React.FC<AppHomeProps> = ({ model, isHomeFullyHidden, isInteractive = true }) => {
     countRender('Home');
+    // 模组的首页页面：外壳只订阅生成扩展页签必需的条目与选中态；页面自己要的订阅随 FoliumHomePage 挂载。
+    const { extraTabs, activeEntry } = useFoliumHomeNavigation();
     // 只在切换 suite 时变（开发版浮层）；同一个回退结果是同一个组件，首页不会因此重新挂载。
     const suiteId = useLibrarySuiteStore(state => state.suite);
     // 目录批量动作（本地文件夹 / 专辑 / 歌手的播放、入队、建歌单、删除、重扫）：首页一个控制器，不随渲染重建。
@@ -38,29 +43,40 @@ const Home: React.FC<AppHomeProps> = ({ model, isHomeFullyHidden, isInteractive 
 
     return (
         <>
-            <GridViewOverlayHost
-                surfaceProps={model.surfaceProps}
-                onOpenCollection={model.onOpenCollection}
-                onPushCollection={model.onPushCollection}
-                onPopCollectionTo={model.onPopCollectionTo}
-                onBackCollection={model.onBackCollection}
-                isInteractive={isInteractive}
-            >
-                {(openGridView, isHomeGridInteractive) => (
-                    <React.Suspense fallback={null}>
-                        <HomeSurface
-                            {...model.surfaceProps}
-                            account={model.account}
-                            accountLayerRef={accountLayer.attach}
-                            onOpenGridView={openGridView}
-                            isInteractive={isHomeGridInteractive}
-                            declaredActions={homeSurface.declaredActions}
-                            directoryActions={directoryActions}
-                            homeResources={homeResources}
-                        />
-                    </React.Suspense>
-                )}
-            </GridViewOverlayHost>
+            {/* 模组页面开着时原生首页整层 inert，并且自成层叠上下文（isolate）：集合层（GridView / GridMap / TUI 的
+                z-[110]）、宿主对话框（z-[120]/[140]）、开发版 suite 切换浮层只在这一层里比高低，整层压在页面（z-[60]）
+                下面——集合开着时 openHomeTab 打开的页面不会被它盖住。就地渲染的登录弹窗不在这一层里，仍在页面之上。 */}
+            <div className={activeEntry ? 'absolute inset-0 isolate' : 'absolute inset-0'} inert={Boolean(activeEntry)}>
+                <GridViewOverlayHost
+                    surfaceProps={model.surfaceProps}
+                    onOpenCollection={model.onOpenCollection}
+                    onPushCollection={model.onPushCollection}
+                    onPopCollectionTo={model.onPopCollectionTo}
+                    onBackCollection={model.onBackCollection}
+                    isInteractive={isInteractive && !activeEntry}
+                >
+                    {(openGridView, isHomeGridInteractive) => (
+                        <React.Suspense fallback={null}>
+                            <HomeSurface
+                                {...model.surfaceProps}
+                                account={model.account}
+                                extraTabs={extraTabs}
+                                onNativeTabSelected={closeFoliumHomeTab}
+                                accountLayerRef={activeEntry ? undefined : accountLayer.attach}
+                                onOpenGridView={openGridView}
+                                isInteractive={isHomeGridInteractive}
+                                declaredActions={homeSurface.declaredActions}
+                                directoryActions={directoryActions}
+                                homeResources={homeResources}
+                            />
+                        </React.Suspense>
+                    )}
+                </GridViewOverlayHost>
+            </div>
+            {activeEntry && (
+                <FoliumHomePage entry={activeEntry} extraTabs={extraTabs}
+                    account={model.account} surfaceProps={model.surfaceProps} />
+            )}
             {/* 登录弹窗与切换确认框：寿命与首页 surface 相同（首页整个藏起时卸载），换 suite 不卸载。 */}
             <LibraryAccountHost
                 account={model.account}

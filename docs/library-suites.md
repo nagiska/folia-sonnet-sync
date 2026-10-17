@@ -445,7 +445,7 @@ account surface 只在 `login` 可见或 `pendingSwitch` 非空时渲染内容�
 
 - `BravaisStage`（manifest 的 `stage`）拥有画面：墙（虚拟化的磁贴，最多约 400 张）、相机、缝（信息条 / 书脊 / 折叠三级开口，只开在 12×8 块的边界上）、翻牌、聚焦卡、键盘焦点、列表 / 目录树面板、表单态，以及外观动作的注册。
 - `BravaisHome` / `BravaisCollection` / `BravaisArtist` 订阅 core 的 binding，把数据投影成**层描述**（`BravaisLayer`：已投影的展示数据 + 身份稳定的回调，不放资源对象），经 `useBravaisLayerRegistration` 推进 suite 内的 `bravaisStageStore`（首页一个位、顶层一个位）；照常注册命令面板；自己只渲染不接指针的锚点（`data-ponder-page-scope="bravais-wall"`）。
-- `BravaisAccount` 渲染 null，把登录 / 确认表单的投影写进 `bravaisAccountStore`，stage 让缝翻成登录态 / 确认态（压过其他一切开口），挂 `data-folia-keyboard-window`。
+- `BravaisAccount` 渲染 null，把登录 / 确认表单的投影写进 `bravaisAccountStore`，stage 让缝翻成登录态 / 确认态（压过其他一切开口），挂 `data-folia-keyboard-window`。反方向 stage 把自己此刻可不可交互交回这个 store（`stageInteractive`）：宿主的整页页面（模组的首页页面）盖住首页时表单看不见，`BravaisAccount` 不装独占按键层，缝也不挂 `data-folia-keyboard-window`，页面关掉后照常接管。
 - stage 按导航快照的 `depth` 与上次显示时记下的深度决定换层种类：变深 = push（被点的磁贴成为起点，排序从它向外展开）、变浅 = back（按布局记忆恢复相机、缝的锚点、起点与焦点）、同深度换层 = replace（首页换页签，整墙出场 / 入场）、`origin` 为 search / player 时 0 ↔ ≥1 是整墙 enter / exit。栈里有重复的集合时，「同键不同深度且正是栈顶」也算换层。stage 根节点的 `data-bravais-shift` / `-seq` 记下每次换层。
 
 **导航**

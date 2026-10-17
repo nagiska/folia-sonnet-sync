@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import {
     cancelExport,
+    clearModCache,
     getFfmpegStatus,
+    getModStorageUsage,
     installModFromZip,
     isModsBridgeAvailable,
     listMods,
@@ -12,7 +14,15 @@ import {
     subscribeModLogs,
     subscribeModsState,
 } from './ipc';
-import type { ModExportProgress, ModFfmpegStatus, ModLogEntry, ModRuntimeInfo, ModSetEnabledResult } from './types';
+import type {
+    ModClearCacheResult,
+    ModExportProgress,
+    ModFfmpegStatus,
+    ModLogEntry,
+    ModRuntimeInfo,
+    ModSetEnabledResult,
+    ModStorageUsageResult,
+} from './types';
 import { reconcileFoliumClients } from './folium/clientLoader';
 import { restoreSavedFoliumSelections } from './folium/missingEntries';
 
@@ -40,6 +50,8 @@ interface ModsStoreState {
     cancelActiveExport: () => Promise<void>;
     openModsDirectory: () => Promise<{ ok: boolean; directory?: string; error?: string }>;
     installModFromZip: (zipPath: string) => Promise<{ ok: boolean; id?: string; error?: string }>;
+    getModStorageUsage: (modId: string) => Promise<ModStorageUsageResult>;
+    clearModCache: (modId: string) => Promise<ModClearCacheResult>;
     bindEvents: () => void;
 }
 
@@ -106,6 +118,11 @@ export const useModsStore = create<ModsStoreState>((set, get) => ({
         }
         return result;
     },
+
+    // Asked for when a mod row expands, never kept here: counting walks the directories.
+    getModStorageUsage: (modId) => getModStorageUsage(modId),
+
+    clearModCache: (modId) => clearModCache(modId),
 
     bindEvents: () => {
         if (get().eventsBound) {

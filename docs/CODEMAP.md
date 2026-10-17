@@ -20,9 +20,9 @@
 | utils | 128+ |
 | backend/electron | 64+ |
 | hooks | 64+ |
+| 其他 | 64+ |
 | src (其他) | 32+ |
 | stores | 32+ |
-| 其他 | 32+ |
 | types | 16+ |
 | i18n | 4+ |
 | workers | 2+ |
@@ -86,6 +86,7 @@
 - `dev/probes/collectionMorph.probe.tsx`
 - `dev/probes/coverSizeAudit.probe.tsx`
 - `dev/probes/fmTab.probe.tsx`
+- `dev/probes/foliumSelectField.probe.tsx`
 - `dev/probes/globalLyricOffsetRuler.probe.tsx`
 - `dev/probes/gridEntrancePerf.probe.tsx`
 - `dev/probes/gridPanelToggle.probe.tsx`

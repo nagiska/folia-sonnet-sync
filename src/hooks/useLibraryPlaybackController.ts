@@ -36,10 +36,11 @@ import { buildLocalSourceRevision, buildNavidromeSourceRevision } from '../servi
 import { getPlaybackRepresentationForRevision } from '../services/playbackRecovery/representationRegistry';
 import { getProviderCacheKey } from '../services/onlineMusic/providerStorage';
 import { getNavidromeConfig, navidromeApi } from '../services/navidromeService';
+import { notifyPlaybackFailed } from '../services/hostExtensionHooks';
 import { PlayerState } from '../types';
 import type { LyricData, LocalPlaylist, LocalSong, OnlineLyricsState, QueueAddBehavior, SongResult, StatusMessage } from '../types';
 import type { AudioQualityPreference, MediaId, ProviderCollection } from '../types/onlineMusic';
-import type { PlaybackSnapshot, PlaybackNavigationOptions } from '../types/appPlayback';
+import type { LibraryPlayOptions, PlaybackSnapshot } from '../types/appPlayback';
 import type { NavidromeSong } from '../types/navidrome';
 import type { NavidromeMatchData } from '../components/modal/NaviLyricMatchModal';
 import { applyQueueAddBehavior } from '../utils/queueAddBehavior';
@@ -67,6 +68,16 @@ import { detectLyricFileIssues } from '../utils/lyrics/lyricFileIssues';
 // src/hooks/useLibraryPlaybackController.ts
 
 type SetState<T> = Dispatch<SetStateAction<T>>;
+
+// 报告本地歌曲放不了（hostExtensionHooks.notifyPlaybackFailed）时用的歌曲。记录残缺、构造不出统一歌曲时报 null：
+// 报告本身不能在失败路径上再抛错。
+const toReportedLocalSong = (localSong: LocalSong): SongResult | null => {
+    try {
+        return buildUnifiedLocalSong({ localSong, matchedSong: null, coverUrl: null, preferOnlineMetadata: false });
+    } catch {
+        return null;
+    }
+};
 
 // A broken sidecar lyric file is reported once per song per session; the Folder tab keeps the details.
 const reportedLyricFileIssueSongIds = new Set<string>();
@@ -134,6 +145,8 @@ export function useLibraryPlaybackController({
     const [showNaviLyricMatchModal, setShowNaviLyricMatchModal] = useState(false);
     const [showOnlineLyricMatchModal, setShowOnlineLyricMatchModal] = useState(false);
     const managedCachedCoverObjectUrlRef = useRef<string | null>(null);
+    /** 库内播放（onPlayLocalSong / onPlayNavidromeSong）的递增请求 id：更新的库内播放取代还在等待的旧请求。 */
+    const libraryPlayRequestIdRef = useRef(0);
     const resolveLocalSongRecord = useCallback((song: SongResult | null | undefined): LocalSong | undefined => {
         const songId = (song as SongResult & { localRef?: { songId: string } } | null | undefined)?.localRef?.songId;
         return songId ? localSongs.find(localSong => localSong.id === songId) : undefined;
@@ -574,12 +587,16 @@ export function useLibraryPlaybackController({
         }, 1000);
     }, [patchLocalSongsInState, prewarmLocalSongMetadata]);
 
-    const onPlayLocalSong = useCallback(async (localSong: LocalSong, queue: LocalSong[] = [], options: PlaybackNavigationOptions = {}) => {
+    const onPlayLocalSong = useCallback(async (localSong: LocalSong, queue: LocalSong[] = [], options: LibraryPlayOptions = {}) => {
+        const requestId = ++libraryPlayRequestIdRef.current;
         interruptStagePlaybackForMainTransition();
 
         const blobUrl = await getAudioFromLocalSong(localSong);
         if (!blobUrl) {
+            // 读文件期间用户换了歌：这次失败已不是用户眼前的事，不提示也不报告（见 LibraryPlayOptions.isCurrent）。
+            if (libraryPlayRequestIdRef.current !== requestId || options.isCurrent?.() === false) return;
             setStatusMsg({ type: 'error', text: t('status.localFileAccessError') || '' });
+            notifyPlaybackFailed({ song: toReportedLocalSong(localSong), reason: null, phase: 'play', willAutoSkip: false });
             return;
         }
 
@@ -711,14 +728,16 @@ export function useLibraryPlaybackController({
     const onPlayNavidromeSong = useCallback(async (
         navidromeSong: NavidromeSong,
         queue: NavidromeSong[] = [],
-        options: PlaybackNavigationOptions = {},
+        options: LibraryPlayOptions = {},
     ) => {
+        const requestId = ++libraryPlayRequestIdRef.current;
         interruptStagePlaybackForMainTransition();
 
         const shouldNavigateToPlayer = options.shouldNavigateToPlayer ?? true;
         const config = getNavidromeConfig();
         if (!config) {
             setStatusMsg({ type: 'error', text: 'Navidrome not configured' });
+            notifyPlaybackFailed({ song: navidromeSong, reason: null, phase: 'play', willAutoSkip: false });
             return;
         }
 
@@ -920,8 +939,12 @@ export function useLibraryPlaybackController({
             });
         } catch (error) {
             console.error('[App] Failed to play Navidrome song:', error);
-            setStatusMsg({ type: 'error', text: t('status.playbackFailed')});
             setIsLyricsLoading(false);
+            // 前面有好几次网络等待（匹配缓存、歌词、歌曲详情）：期间用户换了歌，这次失败就不提示也不报告（见 LibraryPlayOptions.isCurrent）。
+            if (libraryPlayRequestIdRef.current !== requestId || options.isCurrent?.() === false) return;
+            setStatusMsg({ type: 'error', text: t('status.playbackFailed')});
+            // 报告的是 Navidrome 载体本身（它就是 playSong 认得的 SongResult）：在这里重新构造统一歌曲可能因同一份残缺记录再抛错。
+            notifyPlaybackFailed({ song: navidromeSong, reason: null, phase: 'play', willAutoSkip: false });
         }
     }, [
         currentSongRef,

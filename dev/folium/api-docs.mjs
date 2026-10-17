@@ -217,6 +217,10 @@ const SECTION_INFO = {
     },
 };
 
+// Contract section whose types describe objects on the main entry's `api`. They render under
+// MAIN_ENTRY_API's heading, after its member table, instead of as a section of their own.
+export const MAIN_ENTRY_SECTION = 'Main entry';
+
 const anchorOf = (name) => name.toLowerCase();
 
 const escapeCell = (value) => value.replace(/\|/g, '\\|').replace(/\n+/g, ' ');
@@ -251,7 +255,10 @@ const renderItem = (item, known) => {
     return lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
 };
 
-/* The main (Node) entry API: plain JS in electron/modSystem/modApi.cjs, documented by hand. */
+/*
+ * The main (Node) entry API: plain JS in electron/modSystem/modApi.cjs, documented by hand. The types its
+ * rows link to (the contract's MAIN_ENTRY_SECTION) are rendered right after this table.
+ */
 const MAIN_ENTRY_API = `## main 入口（Node）
 
 \`mod.json\` 的 \`main\` 指向一个 \`.cjs\` / \`.js\` 文件，导出 \`activate(api)\`，在主进程运行，拥有完整 Node.js 权限。
@@ -269,9 +276,10 @@ module.exports = function activate(api) {
 | \`api.manifest\` | 冻结的清单副本 |
 | \`api.host\` | \`{ folium: { major, minor }, folia }\`，与客户端的 \`folium.host\` 相同 |
 | \`api.log.info / warn / error(message, details?)\` | 写入模组日志；\`error\` 会显示在模组面板 |
-| \`api.storage.data.get / set / has / delete / keys\` | 异步；需要 \`filesystem.data\`；与客户端 \`folium.storage\` 共用同一个数据文件（上限 1 MB） |
+| \`api.storage.data.get / set / has / delete / keys\` | 异步；需要 \`filesystem.data\`；与客户端 \`folium.storage\` 共用同一个数据文件（上限 1 MB）。更大的内容写成文件，放进 \`api.storage.paths.data\` |
+| \`api.storage.paths.data / cache\` | Folium 1.5：[FoliumModPaths](#foliummodpaths)，本模组写文件的两个目录的绝对路径。两个都是 getter：需要 \`filesystem.data\`，没有时读取即同步抛 \`permission-denied:filesystem.data\`；每次读取都会在目录不存在时先创建它，所以用的时候再读，不要存下来一直用；建不出来时（比如目录的位置上是一个文件或失效的链接）抛文件系统的错误，\`cache\` 是这样时，在模组面板里清空缓存会删掉这个条目。两个 getter 不可枚举，序列化或展开 \`api\` 不会读到它们。\`data\` 放要保留的文件；\`cache\` 放能重建的文件，用户随时可能在模组面板里清空它（模组运行时也一样），宿主不限大小，上限自己控制。\`paths\` 对象总是存在，可以用 \`'paths' in api.storage\` 判断宿主是否支持 |
 | \`api.lifecycle.onDeactivate(fn)\` | 模组被停用、重载或应用退出时调用；\`activate\` 返回的函数效果相同 |
-| \`api.runtime.getPlaybackSnapshot()\` | 当前播放状态的 [FoliumPlaybackSnapshot](#foliumplaybacksnapshot)，渲染端尚未推送时为 \`null\`；需要 \`runtime.playback\` |
+| \`api.runtime.getPlaybackSnapshot()\` | 当前播放状态的 [FoliumPlaybackSnapshot](#foliumplaybacksnapshot)，渲染端尚未推送时为 \`null\`；需要 \`runtime.playback\`。Folium 1.5 起还带音量 \`volume\`（0–1）、静音开关 \`muted\` 与循环模式 \`loopMode\` |
 | \`api.rpc.handle(name, fn)\` | 注册客户端 \`folium.rpc.call(name, ...args)\` 调用的函数；名称匹配 \`/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/\`，参数与返回值需可 JSON 序列化 |
 | \`api.render.exportVideo(spec)\` | 按当前歌曲、动画模式与参数导出透明视频；需要 \`render.export\` 与 ffmpeg |
 | \`api.experimental\` | 预留，目前为空 |
@@ -279,10 +287,13 @@ module.exports = function activate(api) {
 
 /* The whole reference as markdown. */
 export const renderApiDocs = (contractText) => {
-    const sections = parseContract(contractText)
+    const parsed = parseContract(contractText);
+    const mainEntryItems = parsed.filter((section) => section.title === MAIN_ENTRY_SECTION).flatMap((section) => section.items);
+    const sections = parsed
+        .filter((section) => section.title !== MAIN_ENTRY_SECTION)
         .map((section) => ({ ...section, info: SECTION_INFO[section.title] ?? { order: 99, title: section.title, intro: '' } }))
         .sort((left, right) => left.info.order - right.info.order);
-    const known = new Set(sections.flatMap((section) => section.items.map((item) => item.name)));
+    const known = new Set(parsed.flatMap((section) => section.items.map((item) => item.name)));
     const version = /FOLIUM_VERSION = Object\.freeze\(\{ major: (\d+), minor: (\d+) \}\)/.exec(contractText);
 
     const out = [
@@ -299,7 +310,7 @@ export const renderApiDocs = (contractText) => {
         '## 目录',
         '',
         ...sections.map((section) => `- **${section.info.title}**：${section.items.map((item) => `[${item.name}](#${anchorOf(item.name)})`).join(' · ')}`),
-        '- **main 入口（Node）**：[api 对象](#main-入口node)',
+        `- **main 入口（Node）**：${['[api 对象](#main-入口node)', ...mainEntryItems.map((item) => `[${item.name}](#${anchorOf(item.name)})`)].join(' · ')}`,
         '',
     ];
     for (const section of sections) {
@@ -307,7 +318,9 @@ export const renderApiDocs = (contractText) => {
         if (section.info.intro) out.push(section.info.intro, '');
         for (const item of section.items) out.push(renderItem(item, known), '');
     }
-    out.push(MAIN_ENTRY_API);
+    out.push(MAIN_ENTRY_API, '');
+    if (mainEntryItems.length > 0) out.push('只属于 main 入口的类型，同样来自契约文件：', '');
+    for (const item of mainEntryItems) out.push(renderItem(item, known), '');
     return `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`;
 };
 

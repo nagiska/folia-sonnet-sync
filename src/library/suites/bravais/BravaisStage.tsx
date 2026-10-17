@@ -43,7 +43,7 @@ import { libraryWallSeamStyleVars } from '../../../utils/libraryWallSeamStyle';
 import { setBravaisSearchOpen, useBravaisHomeUiStore } from './bravaisHomeUiStore';
 import { useBravaisReducedTransitions } from './bravaisMotion';
 import { useBravaisBeforePush } from './bravaisTransitions';
-import { selectBravaisAccountVariant, useBravaisAccountStore } from './bravaisAccountStore';
+import { selectBravaisAccountVariant, setBravaisAccountStageInteractive, useBravaisAccountStore } from './bravaisAccountStore';
 import { useWallHandoffStore } from '../../../stores/useWallHandoffStore';
 import { usePlaybackStore } from '../../../stores/usePlaybackStore';
 import { resolveBravaisBackStep, selectBravaisHasCurrentSong, type BravaisBackStep } from './bravaisBack';
@@ -318,6 +318,12 @@ const BravaisStage: React.FC<LibrarySuiteStageProps> = ({
 
     const active = isInteractive && owned && Boolean(layer?.isInteractive) && handoff.role === null;
     useBravaisKeyboard(active, interactions.handleAction);
+    // 账户表单（登录 / 切换确认）画在缝里：墙不可交互时（宿主的整页页面盖住首页，整层 inert）它看不见，account surface
+    // 据此不让它接管键盘（见 bravaisAccountStore）。只看宿主给的 isInteractive，不看当前层：集合层开着时表单照样在缝里。
+    useLayoutEffect(() => {
+        setBravaisAccountStageInteractive(isInteractive);
+    }, [isInteractive]);
+    useEffect(() => () => setBravaisAccountStageInteractive(false), []);
     // B7 列表面板：打开是一次导航（写 history，面包屑多「列表」），打开时等级拉回 full；单击一行定位到离缝最近的一份并
     // 聚焦（歌曲直接展开聚焦卡），双击播放。
     const openList = useCallback(() => {
@@ -437,11 +443,14 @@ const BravaisStage: React.FC<LibrarySuiteStageProps> = ({
     // 封面取（专辑里有带自己封面的歌时，再补上它们）。
     const posterActive = seamTarget.variant === 'poster';
     const albumPoster = posterActive && Boolean(layer?.seam.album);
-    const posterSources = useMemo(() => posterPaletteSourcesFor(posterActive ? layer : null), [layer, posterActive]);
-    const posterPalette = useBravaisPosterPalette(posterSources, posterActive);
+    const renderedPosterLayer = seam.rendered.variant === 'poster' ? seam.rendered.layer : null;
+    // 同一层换形态（点过滤、开列表面板、表单）时目标先不是海报了，海报还要转出去半圈：颜色等它换下来再撤，不然转出的
+    // 那一拍回退成默认色（专辑页是藏青色块）。
+    const paletteLayer = posterActive || (renderedPosterLayer && renderedPosterLayer.key === layer?.key) ? layer : null;
+    const posterSources = useMemo(() => posterPaletteSourcesFor(paletteLayer), [paletteLayer]);
+    const posterPalette = useBravaisPosterPalette(posterSources, Boolean(paletteLayer));
     // 缝里此刻画着的海报可能还是上一层的（换层时缝的内容晚一拍才换，约 0.2s）：它的颜色也留着，不然那一拍里它读不到
     // 自己的颜色、回退成默认色，看着像闪了一下。歌手与专辑两套变量名不同，可以同时在。
-    const renderedPosterLayer = seam.rendered.variant === 'poster' ? seam.rendered.layer : null;
     const lingeringPoster = renderedPosterLayer && renderedPosterLayer.key !== layer?.key ? renderedPosterLayer : null;
     const lingeringSources = useMemo(() => posterPaletteSourcesFor(lingeringPoster), [lingeringPoster]);
     const lingeringPalette = useBravaisPosterPalette(lingeringSources, Boolean(lingeringPoster));
@@ -450,8 +459,8 @@ const BravaisStage: React.FC<LibrarySuiteStageProps> = ({
             if (!target) return {};
             return target.seam.album ? albumPaletteVars(palette?.album ?? null) : posterPaletteVars(palette?.artist ?? null);
         };
-        return { ...varsFor(lingeringPoster, lingeringPalette), ...varsFor(posterActive ? layer : null, posterPalette) };
-    }, [layer, lingeringPalette, lingeringPoster, posterActive, posterPalette]);
+        return { ...varsFor(lingeringPoster, lingeringPalette), ...varsFor(paletteLayer, posterPalette) };
+    }, [lingeringPalette, lingeringPoster, paletteLayer, posterPalette]);
 
     const rootClassName = [
         'lattice-root',
