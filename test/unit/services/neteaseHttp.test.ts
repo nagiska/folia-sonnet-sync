@@ -19,7 +19,7 @@ vi.mock('@/services/onlineMusic/providerStorage', () => ({
     removeProviderSessionValue: vi.fn(),
 }));
 
-import { fetchNeteaseResponse } from '@/services/onlineMusic/neteaseHttp';
+import { fetchNeteaseResponse } from '@/services/onlineMusic/netease/neteaseHttp';
 import { readProviderSessionValue, writeProviderSessionValue } from '@/services/onlineMusic/providerStorage';
 
 const API_BASE = 'https://disobey-name-author.ngrok-free.dev';
@@ -47,7 +47,7 @@ describe('NetEase ngrok HTTP transport', () => {
             status: 200,
             data: { code: 200, data: [{ url: 'https://music.example/song.mp3' }] },
         });
-        const { neteaseApi } = await import('@/services/netease');
+        const { neteaseApi } = await import('@/services/onlineMusic/netease/netease');
 
         const result = await neteaseApi.getSongUrl(347230);
 
@@ -66,7 +66,7 @@ describe('NetEase ngrok HTTP transport', () => {
         transport.nativeGet
             .mockResolvedValueOnce({ status: 200, data: '{"code":200,"cookie":"MUSIC_A=anonymous"}' })
             .mockResolvedValueOnce({ status: 200, data: { code: 200, data: [{ url: 'https://music.example/song.mp3' }] } });
-        const { neteaseApi } = await import('@/services/netease');
+        const { neteaseApi } = await import('@/services/onlineMusic/netease/netease');
 
         await neteaseApi.getSongUrl(347230);
 
@@ -82,7 +82,7 @@ describe('NetEase ngrok HTTP transport', () => {
 
     it('preserves non-JSON HTTP diagnostics instead of treating an ngrok error page as API data', async () => {
         transport.nativeGet.mockResolvedValue({ status: 502, data: '<html>tunnel offline</html>' });
-        const { neteaseApi } = await import('@/services/netease');
+        const { neteaseApi } = await import('@/services/onlineMusic/netease/netease');
 
         await expect(neteaseApi.getLoginStatus()).rejects.toMatchObject({
             httpStatus: 502,
@@ -92,7 +92,7 @@ describe('NetEase ngrok HTTP transport', () => {
 
     it('keeps native connection failures tagged as network failures', async () => {
         transport.nativeGet.mockRejectedValue(new Error('connection timed out'));
-        const { neteaseApi } = await import('@/services/netease');
+        const { neteaseApi } = await import('@/services/onlineMusic/netease/netease');
 
         await expect(neteaseApi.getLoginStatus()).rejects.toMatchObject({ networkFailure: true });
     });

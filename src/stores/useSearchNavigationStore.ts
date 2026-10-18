@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { getNavidromeConfig, navidromeApi } from '../services/navidromeService';
 import type { HomeViewTab, LocalSong, SongResult, UnifiedSong } from '../types';
+import { DEFAULT_ONLINE_PROVIDER_ID } from '../types/onlineMusic';
 import type { OnlineProviderId } from '../types/onlineMusic';
 import {
     applyLocalLibraryEntityDisplay,
@@ -70,8 +71,8 @@ export const resolveSearchSource = (tab: HomeViewTab | SearchSource): SearchSour
     if (tab === 'local' || tab === 'navidrome') {
         return tab;
     }
-    if (tab !== 'playlist' && tab !== 'albums' && tab !== 'radio') return tab as OnlineProviderId;
-    return 'netease';
+    if (tab !== 'playlist' && tab !== 'albums' && tab !== 'radio' && tab !== 'explore') return tab as OnlineProviderId;
+    return DEFAULT_ONLINE_PROVIDER_ID;
 };
 
 export const resolveCommandPaletteSearchSource = (
@@ -81,7 +82,7 @@ export const resolveCommandPaletteSearchSource = (
 ): SearchSource => {
     if (currentSong && isLocalPlaybackSong(currentSong)) return 'local';
     if (currentSong && isNavidromePlaybackSong(currentSong)) return 'navidrome';
-    if (currentSong || searchSourceTab === 'netease') return activeOnlineProviderId;
+    if (currentSong || searchSourceTab === DEFAULT_ONLINE_PROVIDER_ID) return activeOnlineProviderId;
     return searchSourceTab;
 };
 
@@ -177,6 +178,7 @@ const getInitialHomeViewTab = (): HomeViewTab => {
         || savedTab === 'albums'
         || savedTab === 'navidrome'
         || savedTab === 'radio'
+        || savedTab === 'explore'
         ? savedTab
         : 'playlist';
 };
@@ -184,7 +186,7 @@ const getInitialHomeViewTab = (): HomeViewTab => {
 export const useSearchNavigationStore = create<SearchNavigationState>((set, get) => ({
     homeViewTab: getInitialHomeViewTab(),
     searchQuery: '',
-    searchSourceTab: 'netease',
+    searchSourceTab: DEFAULT_ONLINE_PROVIDER_ID,
     searchResults: null,
     searchReturnView: 'home',
     isSearchOpen: false,
