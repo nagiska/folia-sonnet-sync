@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { type ConfigEnv, type UserConfig, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import { commandPinyinPlugin } from './dev/pinyin/commandPinyinPlugin.mjs';
+import { traditionalLocalePlugin } from './dev/i18n/traditionalLocalePlugin.mjs';
 import { icuFoliaDataPlugin } from './dev/icuFolia/icuFoliaDataPlugin.mjs';
 import { normalizeBuildCommit, resolveBuildKind, resolveBuildRepo, resolveDevBuildKindOverride } from './dev/build/buildIdentity.mjs';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -267,6 +268,7 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
     plugins: [
       devLyricProxyPlugin(),
       commandPinyinPlugin(),
+      traditionalLocalePlugin(),
       icuFoliaDataPlugin(),
       react(),
       ...(isCapacitorBuild ? [] : [VitePWA({

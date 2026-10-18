@@ -13,6 +13,7 @@ import { reduceMotionSurface } from '../surfaces/reduceMotionSurface';
 import { librarySuitePickerSurface } from '../surfaces/librarySuitePickerSurface';
 import { libraryWallLookCommands } from './libraryWallLookCommands';
 import { openCurrentPagePonder } from '../../../services/ponder/pagePonderTarget';
+import { copyText } from '../../../utils/system/clipboard';
 
 // src/components/command-palette/commands/settingsCommands.ts
 // Commands in the `settings` group: settings subviews, app toggles, theme, sync, and desktop-only switches.
@@ -125,15 +126,15 @@ export const settingsCommands: CommandPaletteCommand[] = [
         'NetEase listening report',
         'Turn reporting of finished NetEase plays on or off',
         ['scrobble toggle', 'netease scrobble', 'report plays', '听歌打卡', '打卡', '听歌排行'],
-        context => context.settings.toggleNeteaseScrobble(),
+        context => context.settings.togglePlaybackReport(),
         // Same predicate the settings panel greys the toggle out with, and a function because
         // signing out has to close the command off while the palette is already open.
-        { isAvailable: context => context?.settings.canReportNeteasePlayback() ?? true },
+        { isAvailable: context => context?.settings.canReportPlayback() ?? true },
     ),
     createSettingsAnchorCommand('settings-audio-output', 'Audio output', 'Jump to the audio output device and format settings', ['output device', 'audio device', 'sound card', '输出设备'], 'audioOutputSettings'),
     createSettingsAnchorCommand('settings-transition', 'Smart transition', 'Jump to the FOLIA transition settings', ['automix', 'crossfade', 'transition', '智能过渡', '转场'], 'transitionSettings'),
     createSettingsAnchorCommand('settings-local-lyrics-priority', 'Local song lyrics priority', 'Choose whether local songs prefer local or online lyrics', ['local lyrics priority', 'online lyrics first', 'local song lyrics', '本地歌曲歌词优先级', '在线优先', '本地歌词', 'bendigeciyouxianji', 'bdgcyxj'], 'lyrics'),
-    createSettingsAnchorCommand('settings-local-lyric-format-order', 'Local lyric file format priority', 'Choose which format wins when a track has several lyric files', ['lyric format priority', 'lyric file order', 'lrc ttml priority', '本地歌词文件格式优先级', '歌词格式', '格式优先级', 'geciwenjiangeshi', 'gcgsyxj'], 'lyrics'),
+    createSettingsAnchorCommand('settings-local-lyric-format-order', 'Local lyric file format priority', 'Choose which format wins when a track has several lyric files', ['lyric format priority', 'lyric file order', 'lrc ttml priority', '本地歌词文件格式优先级', '歌词格式', '格式优先级', 'geciwenjiangeshi', 'gcgsyxj'], 'localLyricFormatOrder'),
     createSettingsCommand('settings-integration', 'Integration settings', 'Open Stage, Now Playing, and Navidrome settings', ['integration', 'stage', 'now playing', 'navidrome settings', '集成', '连接'], 'options', 'integration'),
     createSettingsAnchorCommand('settings-navidrome', 'Navidrome server', 'Jump to the Navidrome server connection', ['navidrome', 'subsonic', 'music server', '音乐服务器'], 'navidrome'),
     createSettingsAnchorCommand('settings-stage-mode', 'Stage mode', 'Jump to the Stage external player settings', ['stage', 'external player', '舞台模式'], 'stageMode'),
@@ -246,7 +247,7 @@ export const settingsCommands: CommandPaletteCommand[] = [
                     context.shared.setStatusMsg({ type: 'error', text: context.shared.t('status.copyFailed', 'Copy failed') });
                     return true;
                 }
-                await navigator.clipboard.writeText(result.css);
+                await copyText(result.css);
                 const hintText = result.degradedGifCount > 0
                     ? context.shared
                         .t('options.obsCssCopiedHintDegraded', 'CSS copied; {{count}} GIF asset(s) copied as static frames due to size. Paste it into OBS Browser Source -> Custom CSS.')
@@ -273,7 +274,7 @@ export const settingsCommands: CommandPaletteCommand[] = [
             if (!isSyncConfigured()) {
                 context.shared.setStatusMsg({
                     type: 'info',
-                    text: context.shared.t('commandPalette.syncNotConfigured', 'Sync is not enabled. Configure and enable it in Storage settings first.'),
+                    text: context.shared.t('commandPalette.syncNotConfigured', 'Sync is not enabled. Configure and enable it in Connections settings first.'),
                 });
                 return true;
             }
@@ -301,7 +302,7 @@ export const settingsCommands: CommandPaletteCommand[] = [
         { isAvailable: context => context?.settings.canAutoScanLocalLibrary() ?? true },
     ),
     createSettingsCommand('settings-desktop', 'Desktop settings', 'Open desktop app settings', ['desktop', 'electron', '桌面', '桌面端'], 'options', 'desktop', { platform: ['electron'] }),
-    createSettingsCommand('settings-update-channel', 'Update channel', 'Choose the desktop app release channel', ['release channel', 'realeco', 'limo', 'cielo', '更新通道', '发布通道'], 'options', 'desktop', { platform: ['electron'] }),
+    createSettingsAnchorCommand('settings-update-channel', 'Update channel', 'Choose the desktop app release channel', ['release channel', 'realeco', 'limo', 'cielo', '更新通道', '发布通道'], 'updateCheck', { platform: ['electron'] }),
     {
         id: 'desktop-toggle-voice-input-pause',
         platform: ['win'],
@@ -371,6 +372,15 @@ export const settingsCommands: CommandPaletteCommand[] = [
         context => context.settings.toggleHideRemoteControlTitlebar(),
         { platform: ['electron'] },
     ),
+    createToggleCommand(
+        'desktop-toggle-remote-control-expand-cover',
+        'settings',
+        'Remote control: expand cover',
+        'Toggle whether the remote control window expands the cover into a large image when idle',
+        ['remote control cover', 'remote window cover', 'expand cover', 'album sleeve', 'large cover', '遥控窗口封面', '展开封面', '封面大图'],
+        context => context.settings.toggleRemoteControlExpandCover(),
+        { platform: ['electron'] },
+    ),
     {
         // Pairs with the remote control click-through switch: while the window ignores the mouse this is the way back in.
         id: 'desktop-unlock-remote-control',
@@ -386,7 +396,8 @@ export const settingsCommands: CommandPaletteCommand[] = [
     },
     createSettingsCommand('settings-graphics', 'Graphics settings', 'Open static mode, frame rate cap, Linux glow fix and reduced motion', ['graphics', 'performance', 'frame rate', 'fps', 'rendering', '图形', '图形设置', '性能', '帧率', '渲染'], 'options', 'graphics'),
     createSettingsCommand('settings-mods', 'Mod settings', 'Open the mod system switch and the installed mods', ['mod manager', 'mod system', 'plugins', '模组设置', '模组系统', '插件'], 'options', 'mods', { platform: ['electron'] }),
-    createSettingsCommand('settings-lab', 'Lab settings', 'Open experimental settings', ['lab', 'experimental', '实验', '实验室'], 'options', 'lab'),
+    // The lab category is gone; its largest group, the player page switches, keeps the command.
+    createSettingsAnchorCommand('settings-lab', 'Player page interface', 'Jump to the switches that hide or pin parts of the player page', ['player interface', 'hide player controls', 'lab', 'experimental', '播放页界面', '实验', '实验室'], 'labPlayerUi'),
     createSettingsAnchorCommand(
         'settings-ponder-hints',
         'Ponder tutorial hints',
@@ -471,7 +482,7 @@ export const settingsCommands: CommandPaletteCommand[] = [
         'bottomUiSettings',
     ),
     createSettingsCommand('settings-visualizer', 'Visualizer settings', 'Open lyrics animation workbench', ['visualizer workbench', '可视化', '歌词动画', 'donghua'], 'options', 'visualizer'),
-    createSettingsCommand('settings-theme-park', 'Color', 'Open theme editor', ['theme park', 'theme', '配色', '主题', '主题公园'], 'options', 'themePark', { executeShortcut: 't' }),
+    createSettingsCommand('settings-theme-park', 'Color', 'Open theme editor', ['theme park', 'theme', '配色', '主题', '主题公园', '主题乐园'], 'options', 'themePark', { executeShortcut: 't' }),
     createSettingsCommand('settings-global-lyric-offset', 'Global timing offset', 'Calibrate lyric timing against Bluetooth or device audio latency', ['lyric delay', 'audio latency', 'bluetooth delay', 'sync lyrics', '全局时间偏移', '歌词延迟', '音画同步', '蓝牙延迟'], 'options', 'globalLyricOffset'),
     createSettingsCommand('settings-lyric-filter', 'Lyric filter', 'Open lyric filter settings', ['lyrics filter', '歌词过滤', '过滤'], 'options', 'lyricFilter'),
     {
@@ -621,6 +632,7 @@ export const settingsCommands: CommandPaletteCommand[] = [
     createToggleCommand('settings-toggle-fullscreen-titlebar-button', 'settings', 'Toggle fullscreen button visibility', 'Show or hide the fullscreen button in the desktop window controls', ['fullscreen button', 'titlebar fullscreen', 'window fullscreen button', 'show fullscreen control', 'hide fullscreen button', 'fullscreen button visibility', '全屏按钮', '标题栏全屏按钮', '显示全屏按钮', '隐藏全屏按钮', '窗口全屏控制', 'quanping annniu', 'biaotilan quanping'], context => context.settings.toggleHideFullscreenButton(), { platform: ['electron'] }),
     createToggleCommand('settings-toggle-native-mac-fullscreen-button', 'settings', 'Native macOS fullscreen button', 'Toggle whether the macOS window control enters native fullscreen instead of maximizing', ['mac window control', 'native fullscreen', 'maximize button', 'macOS 全屏', '原生全屏', '窗口按钮'], context => context.settings.toggleNativeMacFullscreenButton(), { platform: ['mac'] }),
     createToggleCommand('settings-toggle-cursor-auto-hide', 'settings', 'Hide cursor with player controls', 'Toggle whether the mouse pointer disappears together with the auto-hidden player controls', ['cursor', 'mouse pointer', 'hide cursor', 'hide mouse', 'pointer', '鼠标', '鼠标指针', '隐藏鼠标', '隐藏指针', '指针自动隐藏'], context => context.settings.toggleAutoHideCursorWithPlayerChrome()),
+    createToggleCommand('settings-toggle-cursor-idle-hide', 'settings', 'Hide cursor when idle', 'Toggle hiding the mouse pointer after a pause while the player controls stay visible', ['idle cursor', 'auto hide cursor', 'hide mouse pointer', 'cursor idle', '鼠标空闲隐藏', '空闲隐藏鼠标', '单独隐藏鼠标', '自动隐藏鼠标'], context => context.settings.toggleHideCursorWhenIdle()),
     createToggleCommand('settings-toggle-auto-play-on-launch', 'settings', 'Auto-play on launch', 'Toggle whether opening the app resumes the last session by itself', ['autoplay', 'auto play', 'resume on open', 'play on startup', '自动播放', '启动自动播放', '进入应用自动播放', '续播'], context => context.settings.toggleAutoPlayOnLaunch()),
     createToggleCommand('settings-toggle-transcode-fallback', 'settings', 'Transcode unsupported audio', 'Toggle Electron recovery for local and Navidrome audio Chromium cannot decode', ['ffmpeg', 'unsupported audio', 'decode fallback', '无法解码', '转码恢复'], context => context.settings.toggleTranscodeFallback(), { platform: ['electron'] }),
     createToggleCommand('settings-toggle-playback-fade', 'settings', 'Fade on pause and resume', 'Toggle the short fade when pausing and resuming playback', ['fade', 'fade in', 'fade out', 'pause fade', 'smooth pause', 'crossfade pause', '淡入淡出', '暂停淡出', '播放淡入', '渐入渐出'], context => context.settings.togglePlaybackFade()),
@@ -674,7 +686,8 @@ export const settingsCommands: CommandPaletteCommand[] = [
             '字幕底色',
         ], context => context.settings.toggleSubtitleOverlayBackground()),
     createAppLanguageCommand('settings-language-system', 'system', 'Follow system language', 'Use the browser or system language', ['system language', 'follow system', 'auto language', '跟随系统', '系统语言']),
-    createAppLanguageCommand('settings-language-zh-CN', 'zh-CN', 'Switch language to Chinese', 'Use Simplified Chinese in the interface', ['chinese', 'simplified chinese', '中文', '简体中文']),
+    createAppLanguageCommand('settings-language-zh-CN', 'zh-CN', 'Switch language to Simplified Chinese', 'Use Simplified Chinese in the interface', ['chinese', 'simplified chinese', '中文', '简体中文']),
+    createAppLanguageCommand('settings-language-zh-TW', 'zh-TW', 'Switch language to Traditional Chinese', 'Use Traditional Chinese in the interface', ['traditional chinese', 'taiwan region', 'chinese traditional', '繁體中文', '繁体中文', '正體中文']),
     createAppLanguageCommand('settings-language-en', 'en', 'Switch language to English', 'Use English in the interface', ['english', 'interface english', '英文']),
     createAppLanguageCommand('settings-language-in', 'in', 'Switch language to Indonesian', 'Use Bahasa Indonesia in the interface', ['indonesian', 'bahasa indonesia', 'indonesia', '印尼语', 'bhs'])
 ];
