@@ -679,8 +679,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     };
 
     // Android 走系统浏览器（Custom Tab）：统一的 openExternalUrl 会按宿主选 Electron IPC、Capacitor Browser 或新窗口。
-    const handleOpenChinaDownload = () => openExternalUrl(QUARK_DOWNLOAD_URL);
-    const handleOpenBaiduDownload = () => openExternalUrl(BAIDU_DOWNLOAD_URL);
+    const handleOpenChinaDownload = async (): Promise<void> => { await openExternalUrl(QUARK_DOWNLOAD_URL); };
+    const handleOpenBaiduDownload = async (): Promise<void> => { await openExternalUrl(BAIDU_DOWNLOAD_URL); };
 
     // Navidrome Settings State
     // One truth: this used to be a second copy kept in step with App.tsx's by hand.
