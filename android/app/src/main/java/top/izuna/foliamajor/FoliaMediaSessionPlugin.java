@@ -8,8 +8,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.drawable.Icon;
-import android.media.AudioManager;
+import android.media.AudioAttributes;
 import android.media.MediaMetadata;
 import android.media.session.MediaController;
 import android.media.session.MediaSession;
@@ -201,7 +200,10 @@ public class FoliaMediaSessionPlugin extends Plugin {
         mediaSession.setFlags(
             MediaSession.FLAG_HANDLES_MEDIA_BUTTONS | MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
         );
-        mediaSession.setPlaybackToLocal(AudioManager.STREAM_MUSIC);
+        mediaSession.setPlaybackToLocal(new AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+            .build());
         mediaSession.setSessionActivity(activityIntent(context));
         mediaSession.setCallback(new MediaSession.Callback() {
             @Override
@@ -260,10 +262,7 @@ public class FoliaMediaSessionPlugin extends Plugin {
             PlaybackState.CustomAction likeAction = new PlaybackState.CustomAction.Builder(
                 CUSTOM_ACTION_LIKE,
                 isLiked ? labels.unlike : labels.like,
-                Icon.createWithResource(
-                    context,
-                    isLiked ? R.drawable.ic_media_heart : R.drawable.ic_media_heart_outline
-                )
+                isLiked ? R.drawable.ic_media_heart : R.drawable.ic_media_heart_outline
             ).build();
             builder.addCustomAction(likeAction);
         }
