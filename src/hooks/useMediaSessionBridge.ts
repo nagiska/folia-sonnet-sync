@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import type { RefObject } from 'react';
 import { PlayerState } from '../types';
 import type { SongResult } from '../types';
+import { isCapacitorAndroid } from '../platform/runtime';
 import { getSongAlbumLabel, getSongArtistLabel, getSongCoverUrl } from '../services/onlineMusic/songMetadata';
 import {
     getSupportedMediaSessionArtworkUrl,
@@ -51,7 +52,7 @@ export const useMediaSessionBridge = ({
     isNowPlayingControlDisabledRef,
 }: UseMediaSessionBridgeOptions) => {
     useEffect(() => {
-        if (!('mediaSession' in navigator)) {
+        if (isCapacitorAndroid() || !('mediaSession' in navigator)) {
             return;
         }
 
@@ -107,7 +108,7 @@ export const useMediaSessionBridge = ({
     }, [audioRef, isNowPlayingControlDisabledRef, mediaSessionNextRef, mediaSessionPauseRef, mediaSessionPlayRef, mediaSessionPrevRef]);
 
     useEffect(() => {
-        if (!('mediaSession' in navigator)) {
+        if (isCapacitorAndroid() || !('mediaSession' in navigator)) {
             return;
         }
 
@@ -192,7 +193,7 @@ export const useMediaSessionBridge = ({
     }, [audioRef, audioSrc, cachedCoverUrl, currentSong, getDisplayAudioElement, unknownArtistLabel]);
 
     useEffect(() => {
-        if (!('mediaSession' in navigator)) {
+        if (isCapacitorAndroid() || !('mediaSession' in navigator)) {
             return;
         }
 

@@ -22,6 +22,7 @@ public class MainActivity extends BridgeActivity {
         isDaylight = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
             != Configuration.UI_MODE_NIGHT_YES;
         registerPlugin(FoliaWindowPlugin.class);
+        registerPlugin(FoliaMediaSessionPlugin.class);
         super.onCreate(savedInstanceState);
     }
 
