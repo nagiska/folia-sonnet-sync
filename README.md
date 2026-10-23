@@ -153,7 +153,7 @@ Vercel 与 Cloudflare 上的 QQ 音乐不再需要额外部署一个常驻 API �
 
 ## Android（Capacitor）
 
-本仓库是 Folia-major 的 Android 打包分支；当前代码已同步上游 `main`，同时保留 Capacitor 工程和 Android 专用运行时适配。它只承诺前台播放，不包含本地音乐扫描、Android 前台媒体服务或可靠的后台/锁屏连续播放。
+本仓库是 Folia-major 的 Android 打包分支；当前代码已同步上游 `main`，同时保留 Capacitor 工程和 Android 专用运行时适配。Android 播放时会显示系统媒体通知，提供暂停/继续、切换曲目和当前歌曲可用时的收藏操作；这不是 Android 前台播放服务，WebView 被系统回收或设备厂商限制后台时，不保证锁屏后持续播放。Android 不支持本地音乐扫描。
 
 ```bash
 npm ci

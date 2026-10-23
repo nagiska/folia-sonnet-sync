@@ -75,7 +75,7 @@ import type { MediaId, OnlineProviderId, ProviderCollection } from './types/onli
 import { resolveSongCatalogRef } from './services/onlineMusic/catalogRefs';
 import { omni } from './services/onlineMusic/omni';
 import { consumeProgrammaticPause, playbackFade } from './services/playbackFade';
-import { getSongArtistLabel, getSongCoverUrl } from './services/onlineMusic/songMetadata';
+import { getSongArtistLabel, getSongAlbumLabel, getSongCoverUrl } from './services/onlineMusic/songMetadata';
 import { isNavidromeEnabled } from './services/navidromeService';
 import { useAppNavigation } from './hooks/useAppNavigation';
 import { useNeteaseLibrary } from './hooks/useNeteaseLibrary';
@@ -96,6 +96,7 @@ import { useLocalLibraryAutoScan } from './hooks/useLocalLibraryAutoScan';
 import { useElectronVideoExportController } from './hooks/useElectronVideoExportController';
 import { useElectronWindowPlaybackHandoff } from './components/app/playback/restore/useElectronWindowPlaybackHandoff';
 import { useMediaSessionBridge } from './hooks/useMediaSessionBridge';
+import { useAndroidMediaSessionBridge } from './hooks/useAndroidMediaSessionBridge';
 import { usePlayerChromeAutoHide } from './hooks/usePlayerChromeAutoHide';
 import { useMacWallpaperHitRegions } from './hooks/useMacWallpaperHitRegions';
 import { useIdleCursorHide } from './hooks/useIdleCursorHide';
@@ -161,6 +162,7 @@ import { useLibraryOcclusionSettled } from './hooks/useLibraryOcclusionSettled';
 import { useWallHandoffStore } from './stores/useWallHandoffStore';
 import { countRender } from './dev/renderCount';
 import { resolveSongLiked } from './utils/resolveSongLiked';
+import { resolveLikeAvailability } from './utils/playerLikeAvailability';
 import StageSessionEmptyState from './components/app/stage/StageSessionEmptyState';
 import { useVisualizerRendererModel } from './components/visualizer/useVisualizerRendererModel';
 import { useVisualizerTunings } from './components/visualizer/useVisualizerTunings';
@@ -1407,6 +1409,34 @@ export default function App() {
         taskbarHasTrackRef,
         taskbarPlayerStateRef,
     } = useTransportCommandRefs({ resumePlayback, pausePlayback, handlePrevTrack, handleNextTrack });
+
+    useAndroidMediaSessionBridge({
+        title: isNowPlayingStageActive ? null : (displaySong?.name ?? null),
+        artist: displaySong && !isNowPlayingStageActive ? (getSongArtistLabel(displaySong) || t('ui.unknownArtist')) : null,
+        album: displaySong && !isNowPlayingStageActive ? getSongAlbumLabel(displaySong) : null,
+        canLike: Boolean(
+            displaySong
+            && !isShowingTail
+            && !resolveLikeAvailability(displaySong, false, isNowPlayingStageActive).disabled
+        ),
+        isLiked: resolveSongLiked(displaySong, { isLocalSongLiked, starredNavidromeSongIds }),
+        playing: displayPlayerState === PlayerState.PLAYING,
+        controlsDisabled: isNowPlayingStageActive || isShowingTail,
+        play: () => mediaSessionPlayRef.current(),
+        pause: () => mediaSessionPauseRef.current(),
+        previous: () => mediaSessionPrevRef.current(),
+        next: () => mediaSessionNextRef.current(),
+        onLike: () => { void handleLike(); },
+        labels: {
+            play: t('player.play'),
+            pause: t('player.pause'),
+            previous: t('ui.previousTrack'),
+            next: t('ui.nextTrack'),
+            like: t('player.like'),
+            unlike: t('player.unlike'),
+            applicationName: 'Folia',
+        },
+    });
 
     useMediaSessionBridge({
         audioRef,
