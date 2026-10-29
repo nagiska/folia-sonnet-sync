@@ -1378,6 +1378,8 @@ export default function App() {
      */
     const seekDuringTransitionRef = useRef<(time: number) => boolean>(() => false);
     const pauseDuringTransitionRef = useRef<() => boolean>(() => false);
+    /** The Android notification's progress bar seeks through this; seekMainAudio is defined below. */
+    const mediaSessionSeekRef = useRef<(time: number) => void>(() => {});
     /** Shared by every entry point that can seek while a blend is in flight. */
     const seekDuringTransition = useCallback((time: number) => seekDuringTransitionRef.current(time), []);
     const handlePauseDuringTransition = useCallback(() => pauseDuringTransitionRef.current(), []);
@@ -1428,6 +1430,22 @@ export default function App() {
         title: isNowPlayingStageActive ? null : (displaySong?.name ?? null),
         artist: displaySong && !isNowPlayingStageActive ? (getSongArtistLabel(displaySong) || t('ui.unknownArtist')) : null,
         album: displaySong && !isNowPlayingStageActive ? getSongAlbumLabel(displaySong) : null,
+        // The displayed track's own cover and length: `cachedCoverUrl` and `duration` follow the
+        // ARRIVING track during a blend, and pairing either with the outgoing title is the mismatch
+        // the desktop media session was fixed for.
+        coverUrl: isNowPlayingStageActive ? null : (displayCoverUrl ?? null),
+        durationMs: Math.round((Number.isFinite(displayDuration) ? displayDuration : 0) * 1000),
+        getPositionMs: () => Math.max(0, Math.round(currentTime.get() * 1000)),
+        onSeek: positionMs => {
+            // The media card can only offer what the track has: a seek past the end is clamped here.
+            const target = Math.max(0, positionMs) / 1000;
+            mediaSessionSeekRef.current(
+                Number.isFinite(displayDuration) && displayDuration > 0
+                    ? Math.min(target, displayDuration)
+                    : target,
+            );
+        },
+        seekable: !isNowPlayingStageActive && !isShowingTail,
         canLike: Boolean(
             displaySong
             && !isShowingTail
@@ -2082,6 +2100,10 @@ export default function App() {
             void publishStagePlayerPlaybackUpdate();
         }
     }, [publishStagePlayerPlaybackUpdate]);
+
+    // The notification is wired before this exists; the ref is what lets it seek through the same
+    // path as the app's own progress bar, blend handling included.
+    mediaSessionSeekRef.current = seekMainAudio;
 
     const handleMonetLyricLineSeek = useCallback((lyricTimeSec: number) => {
         if (isNowPlayingControlDisabled) {
