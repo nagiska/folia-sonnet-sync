@@ -249,7 +249,7 @@ vercel dev
 
 ## Android（Capacitor 8）
 
-Android 工程位于仓库的 `android/`，使用 Capacitor 8 将 Web 产物封装为 APK 或 AAB；最低支持 Android 7 / API 24。Android 构建不注册 PWA Service Worker，也不提供本地音乐扫描。播放时由 WebView 同步 Android 系统媒体会话和媒体通知，可执行暂停/继续、上一首/下一首以及当前平台支持时的收藏；它不是前台媒体服务，WebView 被系统回收或设备厂商限制后台时不保证锁屏后持续播放。
+Android 工程位于仓库的 `android/`，使用 Capacitor 8 将 Web 产物封装为 APK 或 AAB；最低支持 Android 7 / API 24。Android 构建不注册 PWA Service Worker，也不提供本地音乐扫描。播放时由 WebView 同步 Android 系统媒体会话和媒体通知，通知带当前封面与可拖动的播放进度（进度由 WebView 周期性回报，封面在原生侧后台解码），可执行暂停/继续、上一首/下一首、进度定位以及当前平台支持时的收藏；它不是前台媒体服务，WebView 被系统回收或设备厂商限制后台时不保证锁屏后持续播放。
 
 ### 工具链与配置
 
