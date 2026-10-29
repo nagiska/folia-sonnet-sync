@@ -23,7 +23,7 @@ export interface AndroidMediaSessionSyncOptions {
     title: string;
     artist: string;
     album: string;
-    /** `http(s)` is downloaded natively and `data:` decoded natively; empty means no cover. */
+    /** `https` is downloaded natively and `data:` decoded natively; empty means no cover. */
     artworkUrl: string;
     /** Track length in milliseconds; 0 while it is still unknown. */
     durationMs: number;

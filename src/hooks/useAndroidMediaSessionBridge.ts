@@ -17,7 +17,7 @@ export type UseAndroidMediaSessionBridgeOptions = {
     title: string | null;
     artist: string | null;
     album: string | null;
-    /** The cover the player is showing right now; `http(s)` and WebView-local URLs are both accepted. */
+    /** The cover the player is showing right now; `https` and WebView-local URLs are both accepted. */
     coverUrl?: string | null;
     /** Track length in milliseconds, 0 while it is still unknown. */
     durationMs?: number;
@@ -72,14 +72,15 @@ const readAsDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, rej
 });
 
 /**
- * Artwork travels as a URL: native downloads `http(s)` and decodes `data:` on its own thread. The
- * blob URLs the cover cache mints only exist inside this WebView, so those are read here and handed
- * over as bytes; a cover that cannot be read simply leaves the notification without one.
+ * Artwork travels as a URL: native downloads `https` and decodes `data:` on its own thread. The
+ * blob URLs the cover cache mints only exist inside this WebView, and cleartext `http` is refused by
+ * the manifest, so both are read here and handed over as bytes; a cover that cannot be read simply
+ * leaves the notification without one.
  */
 export const resolveAndroidMediaSessionArtwork = async (coverUrl: string): Promise<string> => {
     const trimmed = coverUrl.trim();
     if (!trimmed) return '';
-    if (/^(https?:|data:image\/)/i.test(trimmed)) return trimmed;
+    if (/^(https:|data:image\/)/i.test(trimmed)) return trimmed;
 
     const cached = artworkCache.get(trimmed);
     if (cached) return cached;

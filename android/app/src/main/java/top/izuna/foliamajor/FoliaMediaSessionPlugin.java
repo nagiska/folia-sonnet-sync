@@ -29,6 +29,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 import androidx.core.content.ContextCompat;
 
@@ -46,8 +47,10 @@ public class FoliaMediaSessionPlugin extends Plugin {
     private static final String CHANNEL_ID = "folia_media_session";
     private static final int NOTIFICATION_ID = 0x0F01A;
     /** The media card draws the cover small; a bigger bitmap only costs binder traffic. */
-    private static final int ARTWORK_MAX_PX = 512;
+    private static final int ARTWORK_MAX_PX = 320;
     private static final int ARTWORK_MAX_BYTES = 8 * 1024 * 1024;
+    /** Base64 inflates by 4/3; the decoded bytes are what the bound above is about. */
+    private static final int ARTWORK_MAX_DATA_CHARS = (ARTWORK_MAX_BYTES / 3) * 4 + 4;
     private static final String INTENT_PLAY = "top.izuna.foliamajor.media.PLAY";
     private static final String INTENT_PAUSE = "top.izuna.foliamajor.media.PAUSE";
     private static final String INTENT_PREVIOUS = "top.izuna.foliamajor.media.PREVIOUS";
@@ -332,6 +335,12 @@ public class FoliaMediaSessionPlugin extends Plugin {
 
             @Override
             public void onSeekTo(long positionMs) {
+                // The panel reads its own position back from the state: move it here first, or a
+                // seek made while paused would leave the bar where it was until the next track.
+                trackPositionMs = Math.max(0, positionMs);
+                if (mediaSession != null) {
+                    mediaSession.setPlaybackState(buildPlaybackState());
+                }
                 emitSeek(positionMs);
             }
 
@@ -388,7 +397,9 @@ public class FoliaMediaSessionPlugin extends Plugin {
                 // so no runtime permission is requested; a rejection only skips the notification.
                 manager.notify(NOTIFICATION_ID, notification);
             }
-        } catch (SecurityException e) {
+        } catch (RuntimeException e) {
+            // SecurityException (no notification permission) and a rom refusing the update land here:
+            // the media session stays usable either way.
             Log.w(TAG, "Media notification was rejected; the media session stays active", e);
         }
     }
@@ -456,24 +467,33 @@ public class FoliaMediaSessionPlugin extends Plugin {
             return;
         }
         final String requested = next;
-        artworkLoader.execute(() -> {
-            Bitmap decoded = decodeArtwork(requested);
-            if (decoded == null) {
-                return;
-            }
-            bridge.executeOnMainThread(() -> {
-                // The track may have changed while the bytes were in flight.
-                if (!requested.equals(artworkSource) || mediaSession == null) {
+        try {
+            artworkLoader.execute(() -> {
+                Bitmap decoded = decodeArtwork(requested);
+                if (decoded == null) {
                     return;
                 }
-                artwork = decoded;
-                mediaSession.setMetadata(buildMetadata());
-                Context current = getContext();
-                if (current != null) {
-                    postNotification(current);
-                }
+                bridge.executeOnMainThread(() -> {
+                    // The track may have changed while the bytes were in flight.
+                    if (!requested.equals(artworkSource) || mediaSession == null) {
+                        return;
+                    }
+                    try {
+                        artwork = decoded;
+                        mediaSession.setMetadata(buildMetadata());
+                        Context current = getContext();
+                        if (current != null) {
+                            postNotification(current);
+                        }
+                    } catch (RuntimeException e) {
+                        Log.w(TAG, "Could not publish the media artwork", e);
+                    }
+                });
             });
-        });
+        } catch (RejectedExecutionException e) {
+            // Destroyed while this cover was being queued; the session it belonged to is gone too.
+            Log.w(TAG, "Artwork loader is already shut down", e);
+        }
     }
 
     private static Bitmap decodeArtwork(String source) {
@@ -484,8 +504,13 @@ public class FoliaMediaSessionPlugin extends Plugin {
                 if (comma < 0 || comma == source.length() - 1) {
                     return null;
                 }
-                bytes = Base64.decode(source.substring(comma + 1), Base64.DEFAULT);
-            } else if (source.startsWith("http://") || source.startsWith("https://")) {
+                String encoded = source.substring(comma + 1);
+                if (encoded.length() > ARTWORK_MAX_DATA_CHARS) {
+                    return null;
+                }
+                bytes = Base64.decode(encoded, Base64.DEFAULT);
+            } else if (source.startsWith("https://")) {
+                // http is not in the manifest's cleartext allowlist, so it would only fail slowly.
                 bytes = downloadArtwork(source);
             } else {
                 // blob: and app-local URLs only exist inside the WebView; the WebView sends bytes.
@@ -678,6 +703,8 @@ public class FoliaMediaSessionPlugin extends Plugin {
     public void handleOnDestroy() {
         // The activity lifecycle may end while a notification is visible; drop both together.
         releaseSession();
+        // The loader's thread outlives nothing: left running it would hold this bridge and activity.
+        artworkLoader.shutdownNow();
         super.handleOnDestroy();
     }
 
