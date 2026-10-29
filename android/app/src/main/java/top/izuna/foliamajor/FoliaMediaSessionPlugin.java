@@ -272,12 +272,14 @@ public class FoliaMediaSessionPlugin extends Plugin {
         trackIsLiked = isLiked;
         trackLabels = labels;
 
+        // The cover is settled before anything is published: an empty one has to clear the last
+        // track's bitmap, and a changed one must not show it under the new title even briefly.
+        loadArtwork(artworkUrl);
         session.setMetadata(buildMetadata());
         session.setPlaybackState(buildPlaybackState());
 
         ensureChannel(context, labels.applicationName);
         postNotification(context);
-        loadArtwork(artworkUrl);
     }
 
     private MediaMetadata buildMetadata() {

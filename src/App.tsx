@@ -1430,15 +1430,19 @@ export default function App() {
         title: isNowPlayingStageActive ? null : (displaySong?.name ?? null),
         artist: displaySong && !isNowPlayingStageActive ? (getSongArtistLabel(displaySong) || t('ui.unknownArtist')) : null,
         album: displaySong && !isNowPlayingStageActive ? getSongAlbumLabel(displaySong) : null,
-        // The same cover the player draws, so the notification never names a song over another's art.
-        coverUrl: isNowPlayingStageActive ? null : coverUrl,
-        durationMs: Math.round((Number.isFinite(duration) ? duration : 0) * 1000),
+        // The displayed track's own cover and length: `cachedCoverUrl` and `duration` follow the
+        // ARRIVING track during a blend, and pairing either with the outgoing title is the mismatch
+        // the desktop media session was fixed for.
+        coverUrl: isNowPlayingStageActive ? null : (displayCoverUrl ?? null),
+        durationMs: Math.round((Number.isFinite(displayDuration) ? displayDuration : 0) * 1000),
         getPositionMs: () => Math.max(0, Math.round(currentTime.get() * 1000)),
         onSeek: positionMs => {
             // The media card can only offer what the track has: a seek past the end is clamped here.
             const target = Math.max(0, positionMs) / 1000;
             mediaSessionSeekRef.current(
-                Number.isFinite(duration) && duration > 0 ? Math.min(target, duration) : target,
+                Number.isFinite(displayDuration) && displayDuration > 0
+                    ? Math.min(target, displayDuration)
+                    : target,
             );
         },
         seekable: !isNowPlayingStageActive && !isShowingTail,
