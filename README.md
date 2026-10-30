@@ -153,7 +153,13 @@ Vercel 与 Cloudflare 上的 QQ 音乐不再需要额外部署一个常驻 API �
 
 ## Android（Capacitor）
 
-本仓库是 Folia-major 的 Android 打包分支；当前代码已同步上游 `main`，同时保留 Capacitor 工程和 Android 专用运行时适配。Android 播放时会显示系统媒体通知，带当前封面和可拖动的播放进度，提供暂停/继续、切换曲目、进度定位和当前歌曲可用时的收藏操作；这不是 Android 前台播放服务，WebView 被系统回收或设备厂商限制后台时，不保证锁屏后持续播放。Android 不支持本地音乐扫描。
+本仓库是 Folia-major 的 Android 打包分支，当前代码已同步上游 **v0.7.24（Rainy Update）**，在保留 Capacitor 工程的前提下做了 Android 专用适配：
+
+- **APK 下载**：到本仓库 [Releases](https://github.com/nagiska/folia-sonnet-sync/releases/latest) 取最新调试包；每次默认分支构建也会在 `Android Build` 工作流里留一份产物。
+- **全面屏**：安全区由原生 `FoliaWindow` / `FoliaWindowInsets` 统一注入 `--folia-safe-area-*`，播放页隐藏系统栏、边缘滑动唤出。
+- **系统媒体通知**：显示当前封面与可拖动的播放进度，支持暂停/继续、上一首/下一首、进度定位，以及当前歌曲可用时的收藏。它不是 Android 前台媒体服务，WebView 被系统回收或设备厂商限制后台时不保证锁屏后持续播放。
+- **接口**：APK 内置自托管的网易云接口地址（`.env.capacitor`），无需另配代理。
+- **不支持**：本地音乐扫描，以及桌面端专属能力（HiFi / mpv 播放引擎、遥控窗口、壁纸模式等）。
 
 ```bash
 npm ci
@@ -175,7 +181,7 @@ cd android
 - **Windows / macOS / Linux**: 最新版本的安装包请前往 [Releases 页面](https://github.com/chthollyphile/folia-major/releases/latest) 下载。
 - **Arch Linux**: 可通过 AUR 获取 [folia-major-bin](https://aur.archlinux.org/packages/folia-major-bin)。
 - **Flatpak**: 社区提供的第三方 flatpak，详情见 [Flatpark](https://flatpark.org/apps/top.izuna.foliamajor/)。
-- **Android**: 社区第三方移植版见下方 [移动端](#移动端)。
+- **Android**: 本仓库 [Releases](https://github.com/nagiska/folia-sonnet-sync/releases/latest) 提供可直接安装的调试 APK；社区第三方移植版见下方 [移动端](#移动端)。
 
 > [!IMPORTANT]
 > 如果国内网络从 GitHub Releases 下载较慢，可以使用 [夸克网盘](https://pan.quark.cn/s/6e4c6fa3bc6f) 或 [百度云](https://pan.baidu.com/s/1f0x3g-8PMcNCO-TJ5z1rPw?pwd=flia) 下载。网盘链接仅提供 Windows 与 Apple silicon 的正式版安装包.
