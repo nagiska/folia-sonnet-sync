@@ -249,7 +249,7 @@ vercel dev
 
 ## Android（Capacitor 8）
 
-Android 工程位于仓库的 `android/`，使用 Capacitor 8 将 Web 产物封装为 APK 或 AAB；最低支持 Android 7 / API 24。Android 构建不注册 PWA Service Worker，也不提供本地音乐扫描。播放时由 WebView 同步 Android 系统媒体会话和媒体通知，通知带当前封面与可拖动的播放进度（进度由 WebView 周期性回报，封面在原生侧后台解码），可执行暂停/继续、上一首/下一首、进度定位以及当前平台支持时的收藏；它不是前台媒体服务，WebView 被系统回收或设备厂商限制后台时不保证锁屏后持续播放。
+Android 工程位于仓库的 `android/`，使用 Capacitor 8 将 Web 产物封装为 APK 或 AAB；最低支持 Android 7 / API 24。Android 构建不注册 PWA Service Worker，也不提供本地音乐扫描。播放时由 WebView 同步 Android 系统媒体会话和媒体通知，通知带当前封面与可拖动的播放进度（进度由 WebView 周期性回报，封面在原生侧后台解码），可执行暂停/继续、上一首/下一首、进度定位以及当前平台支持时的收藏；Android 构建只配置了网易云的 API 网关（`.env.capacitor`），因此登录目前只支持网易云；QQ 音乐、酷狗需要各自的 `VITE_QQ_API_BASE` / `VITE_KUGOU_API_BASE`，波点音乐、YouTube Music、Spotify、汽水音乐的传输层走 Electron 主进程，在 Android 上标记为 runtime-unavailable 而不是报错。它不是前台媒体服务，WebView 被系统回收或设备厂商限制后台时不保证锁屏后持续播放。
 
 ### 工具链与配置
 
