@@ -36,9 +36,9 @@ android {
     signingConfigs {
         if (hasReleaseKeystore) {
             release {
-                def storeType = keystoreProperties['storeType']
-                if (storeType != null && !storeType.trim().isEmpty()) {
-                    this.storeType storeType
+                def storeTypeName = keystoreProperties['storeType']
+                if (storeTypeName != null && !storeTypeName.trim().isEmpty()) {
+                    storeType storeTypeName
                 }
                 storeFile file(keystoreProperties['storeFile'])
                 storePassword keystoreProperties['storePassword']
