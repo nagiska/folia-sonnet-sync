@@ -74,6 +74,28 @@ jobs:
       - name: Build and sync Capacitor web assets
         run: npm run cap:sync:android
 
+      - name: Set up signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEYSTORE_STORE_TYPE: ${{ secrets.ANDROID_KEYSTORE_STORE_TYPE }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "No signing keystore configured; the debug APK will use the runner's throwaway debug key."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/folia-release.p12
+          cat > android/keystore.properties <<EOF
+          storeType=$KEYSTORE_STORE_TYPE
+          storeFile=folia-release.p12
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          echo "Signing keystore installed."
+
       - name: Make Gradle wrapper executable
         run: chmod +x android/gradlew
 

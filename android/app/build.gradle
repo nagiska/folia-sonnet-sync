@@ -36,6 +36,10 @@ android {
     signingConfigs {
         if (hasReleaseKeystore) {
             release {
+                def storeType = keystoreProperties['storeType']
+                if (storeType != null && !storeType.trim().isEmpty()) {
+                    this.storeType storeType
+                }
                 storeFile file(keystoreProperties['storeFile'])
                 storePassword keystoreProperties['storePassword']
                 keyAlias keystoreProperties['keyAlias']
@@ -44,6 +48,13 @@ android {
         }
     }
     buildTypes {
+        // CI 里每次构建都新生成调试 keystore，签名不一致就装不上新包（必须先卸载）。
+        // 配了固定 keystore 时调试包也用它签，之后的版本就能直接覆盖安装。
+        debug {
+            if (hasReleaseKeystore) {
+                signingConfig signingConfigs.release
+            }
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
