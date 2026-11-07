@@ -23,6 +23,7 @@ public class MainActivity extends BridgeActivity {
             != Configuration.UI_MODE_NIGHT_YES;
         registerPlugin(FoliaWindowPlugin.class);
         registerPlugin(FoliaMediaSessionPlugin.class);
+        registerPlugin(FoliaNativePlugin.class);
         super.onCreate(savedInstanceState);
     }
 

@@ -3,6 +3,7 @@ import { installGlobalVisualizerFrameRateLimiter } from './utils/frameRateLimite
 import { installConsoleLogCapture } from './utils/consoleLogBuffer';
 import { installDebugModule } from './services/debug/debugModule';
 import { installMemorySampleFeed } from './services/debug/memorySamples';
+import { installNativeAndroidBridge } from './services/nativeAndroidBridge';
 // import { installCoverSizeAudit } from './services/debug/coverSizeSamples';
 // @ts-ignore
 globalThis.Buffer = Buffer;
@@ -13,6 +14,9 @@ installConsoleLogCapture();
 // buffer. Both no-op off Electron. See services/debug/debugModule.ts.
 installDebugModule();
 installMemorySampleFeed();
+// Android: makes the bundled bridge look like the desktop Folia Bridge extension, so the
+// NetEase/QQ/KuGou API code inside the app answers instead of a remote server.
+void installNativeAndroidBridge();
 // Cover size audit, left wired but switched off: it answered whether the provider CDNs honour the
 // size in a cover URL - they do - and that is not a question worth re-asking every session. The
 // collector and its panel are still in the tree, and `?probe=coverSizeAudit` still reaches them.
