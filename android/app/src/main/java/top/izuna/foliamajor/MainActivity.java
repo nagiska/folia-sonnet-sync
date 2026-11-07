@@ -24,6 +24,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(FoliaWindowPlugin.class);
         registerPlugin(FoliaMediaSessionPlugin.class);
         registerPlugin(FoliaNativePlugin.class);
+        registerPlugin(FoliaAppleMusicPlugin.class);
         super.onCreate(savedInstanceState);
     }
 
