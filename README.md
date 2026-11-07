@@ -153,7 +153,7 @@ Vercel 与 Cloudflare 上的 QQ 音乐不再需要额外部署一个常驻 API �
 
 ## Android（Capacitor）
 
-本仓库是 Folia-major 的 Android 打包分支，当前代码已同步上游 **v0.7.26**，在保留 Capacitor 工程的前提下做了 Android 专用适配：
+本仓库是 Folia-major 的 Android 打包分支，当前代码已同步上游 **v0.7.27**，在保留 Capacitor 工程的前提下做了 Android 专用适配：
 
 - **APK 下载**：到本仓库 [Releases](https://github.com/nagiska/folia-sonnet-sync/releases/latest) 取最新调试包；每次默认分支构建也会在 `Android Build` 工作流里留一份产物。
 - **全面屏**：安全区由原生 `FoliaWindow` / `FoliaWindowInsets` 统一注入 `--folia-safe-area-*`，播放页隐藏系统栏、边缘滑动唤出。
