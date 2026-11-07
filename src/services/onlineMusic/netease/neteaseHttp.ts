@@ -1,17 +1,18 @@
 import { CapacitorHttp } from '@capacitor/core';
 import { isCapacitorAndroid } from '../../../platform/runtime';
 
-// 当前文件：仅为 Android 的 ngrok 网易云 API 使用原生 HTTP，避开浏览器提示页和跨域预检。
+// 当前文件：仅为 Android 的自建网易云 API 使用原生 HTTP，避开浏览器提示页和跨域预检。
 
 type NeteaseHttpResponse = Pick<Response, 'status' | 'ok' | 'text' | 'json'>;
 
-const NGROK_NETEASE_HOST = 'disobey-name-author.ngrok-free.dev';
+// 原生传输只接管这一台 API 主机的请求，其余地址仍走 WebView 的 fetch。
+const NATIVE_NETEASE_HOST = 'api-enhancedtestnagisaki.vercel.app';
 
 export const fetchNeteaseResponse = async (
     url: string,
     options: RequestInit = {},
 ): Promise<NeteaseHttpResponse> => {
-    if (!isCapacitorAndroid() || !url.startsWith(`https://${NGROK_NETEASE_HOST}/`)) {
+    if (!isCapacitorAndroid() || !url.startsWith(`https://${NATIVE_NETEASE_HOST}/`)) {
         return fetch(url, options);
     }
 
@@ -21,6 +22,7 @@ export const fetchNeteaseResponse = async (
     }
 
     const headers = new Headers(options.headers);
+    // 保留 ngrok 的免提示头：换成自建主机时它只是多余，换回 ngrok 时仍然有用。
     headers.set('ngrok-skip-browser-warning', 'true');
     const nativeHeaders: Record<string, string> = {};
     headers.forEach((value, key) => { nativeHeaders[key] = value; });

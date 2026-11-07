@@ -4,11 +4,12 @@ import { Album, Artist, SongResult, UnifiedSong } from '../../../types';
 import { canResolveSongCatalogRef } from '../../../services/onlineMusic/catalogRefs';
 import { getProviderSongMetadata, getProviderSongPageUrl } from '../../../services/onlineMusic/songMetadata';
 import { copyText } from '../../../utils/system/clipboard';
-import { openExternalUrl } from '../../../utils/openExternalUrl';
+import { openOutsideLink } from '../../../utils/system/outsideLink';
+import { isPrimaryModifierPressed } from '../../../utils/platform';
 
 // src/components/panelTab/shell/SongCredits.tsx
 // The playing song in words, under the large cover: its title, its artists and its album. A click
-// on the title copies the song's line, Ctrl+click opens its page on the platform; an artist or the
+// on the title copies the song's line, Ctrl/Cmd+click opens its page on the platform; an artist or the
 // album opens its page in the app.
 
 interface SongCreditsProps {
@@ -61,15 +62,14 @@ const SongCredits: React.FC<SongCreditsProps> = ({
             return;
         }
 
-        // Android 用系统浏览器（Capacitor Browser）打开平台页；openExternalUrl 同时覆盖 Electron 与 Web。
-        void openExternalUrl(songPageUrl).catch((error) => {
+        void openOutsideLink(songPageUrl).catch((error) => {
             console.error('Failed to open provider song page:', error);
         });
     };
 
-    // Normal click copies song info; Ctrl+click opens the provider song page when available.
+    // Normal click copies song info; Ctrl/Cmd+click opens the provider song page when available.
     const handleSongTitleClick = (event: React.MouseEvent<HTMLHeadingElement>) => {
-        if (event.ctrlKey && songPageUrl) {
+        if (isPrimaryModifierPressed(event) && songPageUrl) {
             openProviderSongPage();
             return;
         }
