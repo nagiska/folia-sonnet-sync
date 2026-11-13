@@ -5,6 +5,7 @@ import type { PersonalFmRequestOptions, ProviderSongAvailability } from '../../.
 import { withLoginRequestLimit } from '../login/loginRequestLimit';
 import { withOnlineRequestLimit } from '../failure/onlineRequestLimit';
 import { errorFields } from '../../../utils/errorText';
+import { fetchNeteaseResponse } from './neteaseHttp';
 import {
   isFoliaExtensionBridgeAvailable,
   isFoliaExtensionBridgeConfigured,
@@ -313,7 +314,7 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}, limit
       if (!anonCookie && !endpoint.startsWith('/register/anonimous')) {
         try {
           // The registration is part of the request it is made for: it gets the same limit.
-          const register = (signal?: AbortSignal) => fetch(`${base}/register/anonimous?timestamp=${Date.now()}`, signal ? { signal } : undefined).then(r => r.json());
+          const register = (signal?: AbortSignal) => fetchNeteaseResponse(`${base}/register/anonimous?timestamp=${Date.now()}`, signal ? { signal } : undefined).then(r => r.json());
           const anonRes = await (limit === 'online' ? withOnlineRequestLimit(register, NETEASE_ONLINE_REQUEST_LIMIT_MS) : register());
           if (anonRes && typeof anonRes.cookie === 'string' && anonRes.cookie) {
             anonCookie = anonRes.cookie;
@@ -335,9 +336,9 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}, limit
 
   const target = endpoint.split('?')[0];
   const send = async (signal?: AbortSignal) => {
-    let res: Response;
+    let res: Awaited<ReturnType<typeof fetchNeteaseResponse>>;
     try {
-      res = await fetch(finalUrl, { ...defaultOptions, credentials: 'include', ...(signal ? { signal: eitherSignal(options.signal, signal) } : {}) });
+      res = await fetchNeteaseResponse(finalUrl, { ...defaultOptions, credentials: 'include', ...(signal ? { signal: eitherSignal(options.signal, signal) } : {}) });
     } catch (error) {
       // The API itself could not be reached (the local backend has exited, a remote API is down): not a
       // failure of NetEase's. The error names the route, keeps the fetch's own error as its cause, and
