@@ -1319,8 +1319,7 @@ const ArtistGridView: React.FC<ArtistGridViewProps> = ({
             )}
 
             {/* Header Area */}
-            <div data-folia-safe-top="shift" data-folia-safe-left="shift" className="absolute top-0 left-0 p-6 z-30 flex items-center gap-4">
-            <div className={`absolute ${lowerBackButton ? 'top-6' : 'top-0'} left-0 p-6 z-30 flex items-center gap-4`}>
+            <div data-folia-safe-top="shift" data-folia-safe-left="shift" className={`absolute ${lowerBackButton ? 'top-6' : 'top-0'} left-0 p-6 z-30 flex items-center gap-4`}>
                 <button
                     // 返回按钮表示看完了（onDone）：宿主清掉浏览会话、让每套 suite 忘掉布局记录，再返回
                     // （Escape 与浏览器后退保留）。P4.5 起这条语义在宿主，不在这里清。
