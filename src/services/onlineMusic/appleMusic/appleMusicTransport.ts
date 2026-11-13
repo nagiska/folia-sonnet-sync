@@ -22,6 +22,8 @@ export const getAppleMusicTransportAvailability = (): ProviderAvailability => {
         return { configured: false, reason: 'runtime-unavailable' };
     }
     if (typeof androidRequest === 'function') return { configured: true };
+    // 走到这里说明安卓桥不在，而上面的守卫保证桌面桥在；显式收窄让类型检查认得 bridge 已有定义。
+    if (!bridge) return { configured: false, reason: 'runtime-unavailable' };
     if (bridge.platform === 'darwin' || bridge.platform === 'win32') return { configured: true };
     if (bridge.platform === 'linux') return { configured: false, reason: 'not-configured', messageKey: 'home.appleMusicLinuxUnsupported' };
     return { configured: false, reason: 'runtime-unavailable' };
