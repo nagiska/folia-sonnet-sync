@@ -6,7 +6,8 @@ import { isCapacitorAndroid } from '../../../platform/runtime';
 type NeteaseHttpResponse = Pick<Response, 'status' | 'ok' | 'text' | 'json'>;
 
 // 原生传输只接管这一台 API 主机的请求，其余地址仍走 WebView 的 fetch。
-const NATIVE_NETEASE_HOST = 'api-enhancedtestnagisaki.vercel.app';
+// 导出给单测对齐主机用，换主机时测试跟着走，不再各写一份。
+export const NATIVE_NETEASE_HOST = 'api-enhancedtestnagisaki.vercel.app';
 
 export const fetchNeteaseResponse = async (
     url: string,

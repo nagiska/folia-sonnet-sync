@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// 当前文件：覆盖 ngrok 原生通道的登录、首次匿名会话，以及其他平台的请求隔离。
+// 当前文件：覆盖自建主机原生通道的登录、首次匿名会话，以及其他平台的请求隔离。主机从实现里取，换主机不用改测试。
 
 const transport = vi.hoisted(() => ({
     nativeGet: vi.fn(),
@@ -19,12 +19,12 @@ vi.mock('@/services/onlineMusic/providerStorage', () => ({
     removeProviderSessionValue: vi.fn(),
 }));
 
-import { fetchNeteaseResponse } from '@/services/onlineMusic/netease/neteaseHttp';
+import { fetchNeteaseResponse, NATIVE_NETEASE_HOST } from '@/services/onlineMusic/netease/neteaseHttp';
 import { readProviderSessionValue, writeProviderSessionValue } from '@/services/onlineMusic/providerStorage';
 
-const API_BASE = 'https://disobey-name-author.ngrok-free.dev';
+const API_BASE = `https://${NATIVE_NETEASE_HOST}`;
 
-describe('NetEase ngrok HTTP transport', () => {
+describe('NetEase native HTTP transport', () => {
     beforeEach(() => {
         vi.resetModules();
         vi.resetAllMocks();
@@ -100,7 +100,7 @@ describe('NetEase ngrok HTTP transport', () => {
     it.each([
         [false, `${API_BASE}/login/status`],
         [true, 'https://api.example.com/login/status'],
-        [true, 'https://disobey-name-author.ngrok-free.dev.example.com/login/status'],
+        [true, `https://${NATIVE_NETEASE_HOST}.example.com/login/status`],
         [true, '/netease/login/status'],
     ])('preserves browser fetch for Android=%s and URL=%s', async (android, url) => {
         transport.isAndroid.mockReturnValue(android);

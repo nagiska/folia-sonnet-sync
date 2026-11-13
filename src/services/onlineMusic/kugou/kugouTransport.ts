@@ -403,20 +403,52 @@ const clearWebDeviceIdentity = (): void => {
     }
 };
 
-const persistWebSession = (response: any): void => {
-    // 安卓内置那份酷狗接口（src/nativeBridge/api/kugou.js）登录成功时**不回 cookie 字段**：
-    // 凭据已经写进原生的 cookie 罐了，返回体里只有 userId / token。只认 cookie 就等于
-    // 「扫码确认了、会话却没存」，下一步 user_detail 读不到账号。
-    const cookies = response?.cookie || response?.data?.cookie || response?.session?.cookie;
-    if (typeof cookies === 'string' && cookies) writeProviderSessionValue('kugou', 'cookie', cookies);
-    if (Array.isArray(cookies) && cookies.length) writeProviderSessionValue('kugou', 'cookie', cookies.join('; '));
+const responsePayload = (response: any): any => response?.data || response?.body?.data || response?.body || response;
 
-    const payload = response?.data || response?.body?.data || response?.body || response;
-    const token = payload?.token;
-    const userId = payload?.userid ?? payload?.user_id ?? payload?.userId;
-    const dfid = payload?.dfid;
-    if (token) writeProviderSessionValue('kugou', 'token', String(token));
-    if (userId) writeProviderSessionValue('kugou', 'userid', String(userId));
+/**
+ * 确认的扫码登录（status 4）带来的账号，整对取出，否则 null。别的返回带的是所读内容的归属者
+ * （公开歌单的创建者）的 userid，不是登录者的，所以一律不改账号（#1101）。安卓内置桥
+ * （src/nativeBridge/api/kugou.js）登录成功回的就是顶层 status 4 + userid / token，同样认得。
+ */
+const confirmedSignIn = (operation: KugouOperation, response: any): { token?: string; userId: string } | null => {
+    if (operation !== 'login_qr_check') return null;
+    const payload = responsePayload(response);
+    if (Number(payload?.status) !== 4) return null;
+    const userId = payload?.userid ?? payload?.user_id;
+    return userId ? { token: payload?.token ? String(payload.token) : undefined, userId: String(userId) } : null;
+};
+
+/** 确认登录的会话写入唯一入口：cookie、token、账号 id 整对一起写。 */
+const rememberConfirmedSignIn = (signIn: { token: string; userId: string }, cookieEntries: string[]): void => {
+    if (cookieEntries.length) writeProviderSessionValue('kugou', 'cookie', cookieEntries.join('; '));
+    writeProviderSessionValue('kugou', 'token', signIn.token);
+    writeProviderSessionValue('kugou', 'userid', signIn.userId);
+};
+
+const ACCOUNT_COOKIE_ENTRY = /^(token|userid|user_id)=/i;
+
+/** 别的返回带来的 cookie：账号项自己剔掉，只有确认登录才写账号（#1101）。 */
+const rememberSessionCookies = (cookieEntries: string[]): void => {
+    const kept = cookieEntries.filter(entry => !ACCOUNT_COOKIE_ENTRY.test(entry));
+    if (kept.length) writeProviderSessionValue('kugou', 'cookie', kept.join('; '));
+};
+
+const rememberSignedInAccountId = (userId: string): void => {
+    writeProviderSessionValue('kugou', 'userid', userId);
+};
+
+const persistWebSession = (operation: KugouOperation, response: any): void => {
+    const signIn = confirmedSignIn(operation, response);
+    const cookies = response?.cookie || response?.data?.cookie || response?.session?.cookie;
+    const cookieEntries = (typeof cookies === 'string' ? cookies.split(';')
+        : Array.isArray(cookies) ? cookies.map(String) : [])
+        .map(entry => entry.trim())
+        .filter(Boolean);
+    // 半对不收：另一半会是上一个账号的。安卓内置桥登录成功不回 cookie 字段（凭据已写进原生
+    // cookie 罐），返回体只有 status 4 + userid / token，confirmedSignIn 认的就是这对字段。
+    if (signIn?.token) rememberConfirmedSignIn({ token: signIn.token, userId: signIn.userId }, cookieEntries);
+    else rememberSessionCookies(cookieEntries);
+    const dfid = responsePayload(response)?.dfid;
     if (dfid) writeProviderSessionValue('kugou', 'dfid', String(dfid));
     // 会话变了就同步一遍原生网关：原生兜底切歌拼 /v5/url 读的是推送过来的那份
     // （cookie 罐不可靠，issue #103）。
@@ -433,9 +465,11 @@ const persistElectronAccountHint = (operation: KugouOperation, response: any): v
         removeProviderSessionValue('kugou', 'userid');
         return;
     }
-    const payload = response?.data || response?.body?.data || response?.body || response;
-    const userId = payload?.userid ?? payload?.user_id;
-    if (userId) writeProviderSessionValue('kugou', 'userid', String(userId));
+    // 桥把 token 从登录回答里剥掉、把会话自己的账号 id 写进 profile 回答：只有这两处说明谁登录着。
+    const userId = operation === 'user_detail'
+        ? responsePayload(response)?.userid
+        : confirmedSignIn(operation, response)?.userId;
+    if (userId) rememberSignedInAccountId(String(userId));
 };
 
 export const getKugouTransportAvailability = () => {
@@ -517,7 +551,7 @@ export const requestKugou = async <T = unknown>(operation: KugouOperation, param
                 }
                 throw new OnlineProviderError('network', bridged.message || bridged.__foliaBridgeError, 'kugou', bridged);
             }
-            persistWebSession(bridged);
+            persistWebSession(operation, bridged);
             return bridged as T;
         } catch (error) {
             if (error instanceof OnlineProviderError) throw error;
@@ -546,7 +580,7 @@ export const requestKugou = async <T = unknown>(operation: KugouOperation, param
         // Every request made for a sign-in operation is limited, the device registration it may need too.
         const responseBody = await (limited ? withLoginRequestLimit(send) : send());
         // What a sign-out is answered with is the session that just left: it is not written back.
-        if (targetOperation !== 'logout') persistWebSession(responseBody);
+        if (targetOperation !== 'logout') persistWebSession(targetOperation, responseBody);
         else syncKugouGatewayCredentials();
         const body = responseBody?.body ?? responseBody;
         return body;
