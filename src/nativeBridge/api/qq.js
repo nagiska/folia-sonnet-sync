@@ -2188,7 +2188,3 @@ async function qqVerifyTrackPresence(dirId, ids, cookieHeader) {
   if (found === 0) return 'absent';
   return 'unknown';
 }
-
-// 探索页那组路由（3.3.3）住在自己的目录里：那一组的代码只服务这一个平台，
-// 不该再堆进共享的桥文件。
-export * from './qq/explore.js';
