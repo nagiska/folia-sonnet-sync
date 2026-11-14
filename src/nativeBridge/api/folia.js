@@ -45,6 +45,10 @@ import {
   handleQQSubscriptionStatus,
   handleQQSongLikeWrite,
   handleQQAlbumSubscribe,
+} from './qq.js';
+// 探索页那组路由（3.3.3）住在自己的目录里：那一组的代码只服务这一个平台，
+// 不该再堆进共享的桥文件。这里直接引子模块，不经 qq.js 转手，免得父子互引成环。
+import {
   readNewSongs,
   readNewAlbums,
   readToplists,
@@ -59,7 +63,7 @@ import {
   readUserCloud,
   createPlaylist,
   searchCatalog,
-} from './qq.js';
+} from './qq/explore.js';
 import {
   qqWechatGetLoginQr,
   qqWechatCheckLoginQr,
@@ -95,11 +99,15 @@ import {
   downloadKGLyricByCandidate,
   kgPostAndroidSigned,
   upgradeKGYouthDayVip,
+} from './kugou.js';
+// 歌单的写入（收藏 / 取消收藏 / 增删曲目）住在自己的目录里：那一组只服务这一个平台，
+// 不该再堆进共享的桥文件。这里直接引子模块，不经 kugou.js 转手，免得父子互引成环。
+import {
   handlePlaylistAdd,
   handlePlaylistDel,
   handlePlaylistTracksAdd,
   handlePlaylistTracksDel,
-} from './kugou.js';
+} from './kugou/playlists.js';
 import { handleBodianRequest } from './bodian.js';
 
 function firstValue(...values) {

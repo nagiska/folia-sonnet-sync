@@ -153,10 +153,11 @@ Vercel 与 Cloudflare 上的 QQ 音乐不再需要额外部署一个常驻 API �
 
 ## Android（Capacitor）
 
-本仓库是 Folia-major 的 Android 打包分支，当前代码已同步上游 **v0.7.27**，在保留 Capacitor 工程的前提下做了 Android 专用适配：
+本仓库是 Folia-major 的 Android 打包分支，当前代码已同步上游 **v0.7.28**，在保留 Capacitor 工程的前提下做了 Android 专用适配：
 
 - **APK 下载**：到本仓库 [Releases](https://github.com/nagiska/folia-sonnet-sync/releases/latest) 取最新调试包；每次默认分支构建也会在 `Android Build` 工作流里留一份产物。
 - **全面屏**：安全区由原生 `FoliaWindow` / `FoliaWindowInsets` 统一注入 `--folia-safe-area-*`，播放页隐藏系统栏、边缘滑动唤出。
+- **横屏界面缩放**：手机横屏自动进紧凑档——rem 基准整体缩小、面板顶边距与安全区收回，播放面板和弹出的选择器在矮屏上放得下；竖屏与平板不受影响。
 - **系统媒体通知**：显示当前封面与可拖动的播放进度，支持暂停/继续、上一首/下一首、进度定位，以及当前歌曲可用时的收藏。它不是 Android 前台媒体服务，WebView 被系统回收或设备厂商限制后台时不保证锁屏后持续播放。
 - **本地登录**：`.env.capacitor` 里的 `VITE_*_API_BASE` 全部写成 `extension`，请求交给 App 内置的 `src/nativeBridge`——网易云自己加密直连，QQ 音乐与酷狗走内置接口实现，都不需要部署 API 服务器。
 - **Apple Music**：`FoliaAppleMusic` 插件在 App 内开一个隐藏 WebView 跑 `music.apple.com`，登录、搜索、歌单与播放都在里面，接口形状与桌面版 companion 一致。

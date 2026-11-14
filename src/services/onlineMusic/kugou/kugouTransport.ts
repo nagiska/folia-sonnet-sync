@@ -403,20 +403,65 @@ const clearWebDeviceIdentity = (): void => {
     }
 };
 
-const persistWebSession = (response: any): void => {
-    // 安卓内置那份酷狗接口（src/nativeBridge/api/kugou.js）登录成功时**不回 cookie 字段**：
-    // 凭据已经写进原生的 cookie 罐了，返回体里只有 userId / token。只认 cookie 就等于
-    // 「扫码确认了、会话却没存」，下一步 user_detail 读不到账号。
-    const cookies = response?.cookie || response?.data?.cookie || response?.session?.cookie;
-    if (typeof cookies === 'string' && cookies) writeProviderSessionValue('kugou', 'cookie', cookies);
-    if (Array.isArray(cookies) && cookies.length) writeProviderSessionValue('kugou', 'cookie', cookies.join('; '));
+// 安卓内置那份酷狗接口（src/nativeBridge/api/kugou.js）登录成功时**不回 cookie 字段**：
+// 凭据已经写进原生的 cookie 罐了，返回体里只有 status 4 + userid / token。
+// confirmedSignIn 认的就是这对字段，所以桥那条路同样能存下会话。
+const responsePayload = (response: any): any => response?.data || response?.body?.data || response?.body || response;
 
-    const payload = response?.data || response?.body?.data || response?.body || response;
-    const token = payload?.token;
-    const userId = payload?.userid ?? payload?.user_id ?? payload?.userId;
-    const dfid = payload?.dfid;
-    if (token) writeProviderSessionValue('kugou', 'token', String(token));
-    if (userId) writeProviderSessionValue('kugou', 'userid', String(userId));
+/**
+ * The account a confirmed QR sign-in (status 4) brings, as a whole pair, or null. Other answers
+ * carry the userid of whoever owns what was read (a public playlist's creator), not of who is
+ * signed in, so they never change the account (#1101).
+ */
+const confirmedSignIn = (operation: KugouOperation, response: any): { token?: string; userId: string } | null => {
+    if (operation !== 'login_qr_check') return null;
+    const payload = responsePayload(response);
+    if (Number(payload?.status) !== 4) return null;
+    const userId = payload?.userid ?? payload?.user_id;
+    return userId ? { token: payload?.token ? String(payload.token) : undefined, userId: String(userId) } : null;
+};
+
+/**
+ * The one place the web session's account is written (registered for Dedicatus D604): the cookies,
+ * the token and the account id of a confirmed sign-in, the token and the id as a whole pair.
+ */
+const rememberConfirmedSignIn = (signIn: { token: string; userId: string }, cookieEntries: string[]): void => {
+    if (cookieEntries.length) writeProviderSessionValue('kugou', 'cookie', cookieEntries.join('; '));
+    writeProviderSessionValue('kugou', 'token', signIn.token);
+    writeProviderSessionValue('kugou', 'userid', signIn.userId);
+};
+
+const ACCOUNT_COOKIE_ENTRY = /^(token|userid|user_id)=/i;
+
+/**
+ * The cookies any other answer brings (registered for Dedicatus D604): it drops the account ones
+ * itself, which only a confirmed sign-in writes (#1101).
+ */
+const rememberSessionCookies = (cookieEntries: string[]): void => {
+    const kept = cookieEntries.filter(entry => !ACCOUNT_COOKIE_ENTRY.test(entry));
+    if (kept.length) writeProviderSessionValue('kugou', 'cookie', kept.join('; '));
+};
+
+/**
+ * The desktop app's hint of who is signed in (registered for Dedicatus D604): passed only the account id
+ * of a confirmed sign-in, or the one the bridge writes into the profile answer from its own session.
+ */
+const rememberSignedInAccountId = (userId: string): void => {
+    writeProviderSessionValue('kugou', 'userid', userId);
+};
+
+const persistWebSession = (operation: KugouOperation, response: any): void => {
+    const signIn = confirmedSignIn(operation, response);
+    const cookies = response?.cookie || response?.data?.cookie || response?.session?.cookie;
+    const cookieEntries = (typeof cookies === 'string' ? cookies.split(';')
+        : Array.isArray(cookies) ? cookies.map(String) : [])
+        .map(entry => entry.trim())
+        .filter(Boolean);
+    // Half of a pair is not taken: the other half would be the previous account's. Account cookies of
+    // any other answer are left out, like its account fields.
+    if (signIn?.token) rememberConfirmedSignIn({ token: signIn.token, userId: signIn.userId }, cookieEntries);
+    else rememberSessionCookies(cookieEntries);
+    const dfid = responsePayload(response)?.dfid;
     if (dfid) writeProviderSessionValue('kugou', 'dfid', String(dfid));
     // 会话变了就同步一遍原生网关：原生兜底切歌拼 /v5/url 读的是推送过来的那份
     // （cookie 罐不可靠，issue #103）。
@@ -433,9 +478,12 @@ const persistElectronAccountHint = (operation: KugouOperation, response: any): v
         removeProviderSessionValue('kugou', 'userid');
         return;
     }
-    const payload = response?.data || response?.body?.data || response?.body || response;
-    const userId = payload?.userid ?? payload?.user_id;
-    if (userId) writeProviderSessionValue('kugou', 'userid', String(userId));
+    // The bridge strips the token from the sign-in answer, and writes the session's own account id
+    // into the profile answer: those two are the only answers that say who is signed in.
+    const userId = operation === 'user_detail'
+        ? responsePayload(response)?.userid
+        : confirmedSignIn(operation, response)?.userId;
+    if (userId) rememberSignedInAccountId(String(userId));
 };
 
 export const getKugouTransportAvailability = () => {
@@ -517,7 +565,7 @@ export const requestKugou = async <T = unknown>(operation: KugouOperation, param
                 }
                 throw new OnlineProviderError('network', bridged.message || bridged.__foliaBridgeError, 'kugou', bridged);
             }
-            persistWebSession(bridged);
+            persistWebSession(operation, bridged);
             return bridged as T;
         } catch (error) {
             if (error instanceof OnlineProviderError) throw error;
@@ -546,7 +594,7 @@ export const requestKugou = async <T = unknown>(operation: KugouOperation, param
         // Every request made for a sign-in operation is limited, the device registration it may need too.
         const responseBody = await (limited ? withLoginRequestLimit(send) : send());
         // What a sign-out is answered with is the session that just left: it is not written back.
-        if (targetOperation !== 'logout') persistWebSession(responseBody);
+        if (targetOperation !== 'logout') persistWebSession(targetOperation, responseBody);
         else syncKugouGatewayCredentials();
         const body = responseBody?.body ?? responseBody;
         return body;

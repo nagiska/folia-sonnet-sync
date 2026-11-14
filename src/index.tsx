@@ -5,6 +5,8 @@ import { installDebugModule } from './services/debug/debugModule';
 import { installMemorySampleFeed } from './services/debug/memorySamples';
 import { installNativeAndroidBridge } from './services/nativeAndroidBridge';
 import { installAppleMusicAndroidBridge } from './services/appleMusicAndroidBridge';
+import { installAndroidUiScale } from './platform/androidUiScale';
+import './platform/androidUiScale.css';
 // import { installCoverSizeAudit } from './services/debug/coverSizeSamples';
 // @ts-ignore
 globalThis.Buffer = Buffer;
@@ -20,6 +22,8 @@ installMemorySampleFeed();
 void installNativeAndroidBridge();
 // Android: the Apple Music companion is a hidden WebView (FoliaAppleMusic plugin).
 installAppleMusicAndroidBridge();
+// Android: scale the UI down on phone landscape so the short screen fits the controls.
+installAndroidUiScale();
 // Cover size audit, left wired but switched off: it answered whether the provider CDNs honour the
 // size in a cover URL - they do - and that is not a question worth re-asking every session. The
 // collector and its panel are still in the tree, and `?probe=coverSizeAudit` still reaches them.

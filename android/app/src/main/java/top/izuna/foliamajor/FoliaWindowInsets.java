@@ -24,6 +24,7 @@ final class FoliaWindowInsets {
     private Insets safeArea = Insets.NONE;
     private boolean keyboardVisible;
     private boolean destroyed;
+    private boolean safeAreaBypass;
     private String lastScript;
     private final View.OnLayoutChangeListener layoutListener = (v, l, t, r, b, ol, ot, or, ob) -> {
         if (lastInsets != null) {
@@ -60,6 +61,15 @@ final class FoliaWindowInsets {
         }
     }
 
+    // 切换安全区收回（手机横屏紧凑档）：立刻按新档位重写 CSS 变量，不等下一次 insets 回调。
+    void setSafeAreaBypass(boolean bypass) {
+        if (safeAreaBypass == bypass) {
+            return;
+        }
+        safeAreaBypass = bypass;
+        injectSafeArea(true);
+    }
+
     // 旧系统仅补足 resize 后仍被遮住的区域，避免 adjustResize 双重缩小。
     private void updateInsets(WindowInsetsCompat insets, boolean force) {
         if (destroyed) {
@@ -92,6 +102,11 @@ final class FoliaWindowInsets {
             return;
         }
         float density = webView.getResources().getDisplayMetrics().density;
+        // 紧凑档（手机横屏）收回安全区：四个变量都写 0，内容铺满矮屏，系统栏由 MainActivity 一并收起。
+        float top = safeAreaBypass ? 0 : safeArea.top / density;
+        float right = safeAreaBypass ? 0 : safeArea.right / density;
+        float bottom = safeAreaBypass || keyboardVisible ? 0 : safeArea.bottom / density;
+        float left = safeAreaBypass ? 0 : safeArea.left / density;
         String script = String.format(Locale.US,
             "(function(){var e=document.documentElement;if(!e)return;"
                 + "e.dataset.runtime='capacitor-android';var s=e.style;"
@@ -99,8 +114,7 @@ final class FoliaWindowInsets {
                 + "s.setProperty('--folia-safe-area-right','%.3fpx');"
                 + "s.setProperty('--folia-safe-area-bottom','%.3fpx');"
                 + "s.setProperty('--folia-safe-area-left','%.3fpx');})()",
-            safeArea.top / density, safeArea.right / density,
-            (keyboardVisible ? 0 : safeArea.bottom) / density, safeArea.left / density);
+            top, right, bottom, left);
         if (force || !script.equals(lastScript)) {
             lastScript = script;
             webView.evaluateJavascript(script, null);

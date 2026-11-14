@@ -1,0 +1,26 @@
+/*
+ * Android 界面缩放（横屏优化）。
+ *
+ * 缩的是根字号（rem 基准），不是 zoom：zoom 只把元素画小、layout viewport 不变，100vw / 100dvh
+ * 会缩到一角四周留白；动 rem 基准则 Tailwind 的间距、字号、圆角几乎全是 rem，按比例缩小，
+ * % / flex / dvh 这类弹性布局原样保留，该铺满的继续铺满，fixed 弹层也不受影响。
+ *
+ * 两档，数值由 androidUiScale.ts 写进 --folia-ui-scale-* 变量（用户可调），这里只决定要不要缩：
+ *   ① 正常档（竖屏 / 平板）→ --folia-ui-scale-normal（手机默认 86%，平板 100%）。
+ *   ② 手机横屏（compact）→ --folia-ui-scale-compact（在 ① 上再收 10%）。
+ * ② 必须写在 ① 后面：同样特异性靠书写顺序取胜，横屏同时命中两条时以 ② 为准。
+ *
+ * 挂在 data-folia-device-resolved（推断后的结论）而不是用户选择上：没选过设备类型、但机器本来
+ * 就是手机的人竖屏横屏都缩，转一下屏尺度不会跳档。平板默认 100% 等于没缩，想再小也能拉滑条。
+ */
+html[data-folia-device-resolved='phone'] {
+    font-size: var(--folia-ui-scale-normal, 86%);
+}
+
+html[data-folia-device-resolved='tablet'] {
+    font-size: var(--folia-ui-scale-normal, 100%);
+}
+
+html[data-folia-ui-scale='compact'] {
+    font-size: var(--folia-ui-scale-compact, 76%);
+}

@@ -4787,7 +4787,3 @@ export {
   // 只给单测用：歌手字段的兼容逻辑（collectKGAuthors）藏在行映射里，不导出来测不到。
   mapKGSong,
 };
-
-// 歌单的写入（收藏 / 取消收藏 / 增删曲目）住在自己的目录里：那一组只服务这一个平台，
-// 不该再堆进共享的桥文件。
-export * from './kugou/playlists.js';
