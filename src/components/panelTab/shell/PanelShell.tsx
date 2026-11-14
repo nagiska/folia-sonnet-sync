@@ -8,6 +8,7 @@ import { panelTokens } from './panelTheme';
 import { FOLDED_PX } from './SongHeader';
 import { useMeasuredSize } from './useMeasuredSize';
 import { isCompactUiScaleActive } from '../../../stores/useUiScaleSettingsStore';
+import { useBottomDockStore, useIsDockCompactWithCapsule } from '../../../stores/useBottomDockStore';
 
 // src/components/panelTab/shell/PanelShell.tsx
 // The frame of the playing page's panel: where it sits, the glass surface, and how tall it is. The
@@ -52,19 +53,22 @@ type PanelShellProps = {
 };
 
 type PanelSurfaceProps = Omit<PanelShellProps, 'isOpen' | 'handle'> & {
+    /** The handle hangs on the compact capsule's right end (progress-bar v3): the surface grows from there. */
+    isDocked: boolean;
     /** Registers the surface as an obstacle of the player layout. */
     layoutRef: (element: HTMLElement | null) => void;
     /** Tells the player layout that the surface moved. */
     onLayoutUpdate: () => void;
 };
 
-const PanelSurface: React.FC<PanelSurfaceProps> = ({ hasHandle, isCover, tabKey, theme, isDaylight, header, dock, children, layoutRef, onLayoutUpdate }) => {
+const PanelSurface: React.FC<PanelSurfaceProps> = ({ hasHandle, isCover, tabKey, theme, isDaylight, header, dock, children, isDocked, layoutRef, onLayoutUpdate }) => {
     const reduced = useKitReducedMotion();
     const bottomBarBottomPx = usePlayerBottomBarBottomPx();
     // What is under the surface: the handle, or a small gap. A variable, so the two heights below follow it at once.
     // 手机横屏紧凑档收掉顶边距：矮屏上那 56px 会把面板压成一条；下面的把手位置保持不变。
     const compact = isCompactUiScaleActive();
-    const underPx = hasHandle ? HANDLE_ROOM_PX : BARE_GAP_PX;
+    // Docked on the compact capsule the surface always clears the capsule, handle or not.
+    const underPx = hasHandle || isDocked ? HANDLE_ROOM_PX : BARE_GAP_PX;
     const topMargin = compact ? COMPACT_TOP_MARGIN_PX : TOP_MARGIN_PX;
     // Never taller than the window allows, wherever the bottom bar's baseline has been lifted to.
     const maxHeight = useTransform(
@@ -117,8 +121,11 @@ const PanelSurface: React.FC<PanelSurfaceProps> = ({ hasHandle, isCover, tabKey,
                 maxHeight,
                 padding: PADDING_PX,
                 marginBottom: underPx,
-                // The centre of the handle, at the surface's right end.
-                transformOrigin: `calc(100% - 24px) calc(100% + ${underPx - 24}px)`,
+                // The centre of the handle, at the surface's right end. Docked on the compact capsule the
+                // 40px handle sits 8px in from the capsule's right edge, its centre 38px under the surface.
+                transformOrigin: isDocked
+                    ? 'calc(100% - 28px) calc(100% + 38px)'
+                    : `calc(100% - 24px) calc(100% + ${underPx - 24}px)`,
             } as MotionStyle}
         >
             {header}
@@ -154,6 +161,13 @@ const PanelSurface: React.FC<PanelSurfaceProps> = ({ hasHandle, isCover, tabKey,
 const PanelShell: React.FC<PanelShellProps> = ({ isOpen, handle, ...surface }) => {
     const bottomBarBottomPx = usePlayerBottomBarBottomPx();
     const { ref: layoutRef, invalidate: invalidateLayout } = usePlayerOverlayObstacle('player-panel', 'panel');
+    // 紧凑档（progress-bar v3）：按钮挂在胶囊右端，面板从胶囊右端长出来，右边和胶囊对齐、底边在胶囊顶上
+    // （bottomDock.css 平移这一层）。面板开着时胶囊不再悬停展开，免得两块玻璃叠在一起。
+    const isDocked = useIsDockCompactWithCapsule();
+    useEffect(() => {
+        useBottomDockStore.getState().setCompanionOpen('panel', isOpen);
+        return () => useBottomDockStore.getState().setCompanionOpen('panel', false);
+    }, [isOpen]);
 
     return (
         <motion.div
@@ -164,9 +178,14 @@ const PanelShell: React.FC<PanelShellProps> = ({ isOpen, handle, ...surface }) =
             className="absolute right-0 z-[60] flex flex-col items-end pointer-events-none"
             onClick={(e) => e.stopPropagation()}
         >
-            <div className="pr-4 md:pr-8">
+            {/* 平移只加在面板这一层：按钮（handle）是 fixed 的兄弟，外层一带 translate 就成了它的定位参照，会被一起带偏。 */}
+            <div
+                className={`dock-companion dock-companion--panel-surface ${isDocked ? 'is-docked' : ''} pr-4 md:pr-8`}
+                // 挂上、取下的平移走完再请 player.layout 量一次面板（CSS 平移不触发它自己的测量）。
+                onTransitionEnd={invalidateLayout}
+            >
                 <AnimatePresence>
-                    {isOpen && <PanelSurface {...surface} layoutRef={layoutRef} onLayoutUpdate={invalidateLayout} />}
+                    {isOpen && <PanelSurface {...surface} isDocked={isDocked} layoutRef={layoutRef} onLayoutUpdate={invalidateLayout} />}
                 </AnimatePresence>
             </div>
 

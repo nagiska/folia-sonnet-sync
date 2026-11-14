@@ -403,12 +403,15 @@ const clearWebDeviceIdentity = (): void => {
     }
 };
 
+// 安卓内置那份酷狗接口（src/nativeBridge/api/kugou.js）登录成功时**不回 cookie 字段**：
+// 凭据已经写进原生的 cookie 罐了，返回体里只有 status 4 + userid / token。
+// confirmedSignIn 认的就是这对字段，所以桥那条路同样能存下会话。
 const responsePayload = (response: any): any => response?.data || response?.body?.data || response?.body || response;
 
 /**
- * 确认的扫码登录（status 4）带来的账号，整对取出，否则 null。别的返回带的是所读内容的归属者
- * （公开歌单的创建者）的 userid，不是登录者的，所以一律不改账号（#1101）。安卓内置桥
- * （src/nativeBridge/api/kugou.js）登录成功回的就是顶层 status 4 + userid / token，同样认得。
+ * The account a confirmed QR sign-in (status 4) brings, as a whole pair, or null. Other answers
+ * carry the userid of whoever owns what was read (a public playlist's creator), not of who is
+ * signed in, so they never change the account (#1101).
  */
 const confirmedSignIn = (operation: KugouOperation, response: any): { token?: string; userId: string } | null => {
     if (operation !== 'login_qr_check') return null;
@@ -418,7 +421,10 @@ const confirmedSignIn = (operation: KugouOperation, response: any): { token?: st
     return userId ? { token: payload?.token ? String(payload.token) : undefined, userId: String(userId) } : null;
 };
 
-/** 确认登录的会话写入唯一入口：cookie、token、账号 id 整对一起写。 */
+/**
+ * The one place the web session's account is written (registered for Dedicatus D604): the cookies,
+ * the token and the account id of a confirmed sign-in, the token and the id as a whole pair.
+ */
 const rememberConfirmedSignIn = (signIn: { token: string; userId: string }, cookieEntries: string[]): void => {
     if (cookieEntries.length) writeProviderSessionValue('kugou', 'cookie', cookieEntries.join('; '));
     writeProviderSessionValue('kugou', 'token', signIn.token);
@@ -427,12 +433,19 @@ const rememberConfirmedSignIn = (signIn: { token: string; userId: string }, cook
 
 const ACCOUNT_COOKIE_ENTRY = /^(token|userid|user_id)=/i;
 
-/** 别的返回带来的 cookie：账号项自己剔掉，只有确认登录才写账号（#1101）。 */
+/**
+ * The cookies any other answer brings (registered for Dedicatus D604): it drops the account ones
+ * itself, which only a confirmed sign-in writes (#1101).
+ */
 const rememberSessionCookies = (cookieEntries: string[]): void => {
     const kept = cookieEntries.filter(entry => !ACCOUNT_COOKIE_ENTRY.test(entry));
     if (kept.length) writeProviderSessionValue('kugou', 'cookie', kept.join('; '));
 };
 
+/**
+ * The desktop app's hint of who is signed in (registered for Dedicatus D604): passed only the account id
+ * of a confirmed sign-in, or the one the bridge writes into the profile answer from its own session.
+ */
 const rememberSignedInAccountId = (userId: string): void => {
     writeProviderSessionValue('kugou', 'userid', userId);
 };
@@ -444,8 +457,8 @@ const persistWebSession = (operation: KugouOperation, response: any): void => {
         : Array.isArray(cookies) ? cookies.map(String) : [])
         .map(entry => entry.trim())
         .filter(Boolean);
-    // 半对不收：另一半会是上一个账号的。安卓内置桥登录成功不回 cookie 字段（凭据已写进原生
-    // cookie 罐），返回体只有 status 4 + userid / token，confirmedSignIn 认的就是这对字段。
+    // Half of a pair is not taken: the other half would be the previous account's. Account cookies of
+    // any other answer are left out, like its account fields.
     if (signIn?.token) rememberConfirmedSignIn({ token: signIn.token, userId: signIn.userId }, cookieEntries);
     else rememberSessionCookies(cookieEntries);
     const dfid = responsePayload(response)?.dfid;
@@ -465,7 +478,8 @@ const persistElectronAccountHint = (operation: KugouOperation, response: any): v
         removeProviderSessionValue('kugou', 'userid');
         return;
     }
-    // 桥把 token 从登录回答里剥掉、把会话自己的账号 id 写进 profile 回答：只有这两处说明谁登录着。
+    // The bridge strips the token from the sign-in answer, and writes the session's own account id
+    // into the profile answer: those two are the only answers that say who is signed in.
     const userId = operation === 'user_detail'
         ? responsePayload(response)?.userid
         : confirmedSignIn(operation, response)?.userId;
