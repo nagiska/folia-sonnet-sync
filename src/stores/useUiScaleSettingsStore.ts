@@ -21,7 +21,7 @@ export const UI_SCALE_STEP = 2;
 export const UI_SCALE_DEFAULT_PHONE = 86;
 export const UI_SCALE_DEFAULT_TABLET = 100;
 /** 横屏（compact）在竖屏那档上再收多少。 */
-const UI_SCALE_COMPACT_OFFSET = 10;
+const UI_SCALE_COMPACT_OFFSET = 14;
 /** 横屏档下限：滑条拉到最低也不至于小到读不出来。 */
 const UI_SCALE_COMPACT_MIN = 55;
 /** 手机短边上限（CSS px）：只用来在「没选过」时兜底推断，选过的一律以选择为准。 */
@@ -65,6 +65,12 @@ export const isLandscapeNow = (): boolean => (
     typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
     && window.matchMedia('(orientation: landscape)').matches
+);
+
+/** 引擎此刻是否让手机横屏进了紧凑档（androidUiScale 写在 <html> 上的属性）。 */
+export const isCompactUiScaleActive = (): boolean => (
+    typeof document !== 'undefined'
+    && document.documentElement.getAttribute('data-folia-ui-scale') === 'compact'
 );
 
 const readStoredDeviceType = (): DeviceTypeSetting => {

@@ -7,6 +7,7 @@ import { kitTransition, useKitReducedMotion } from '../../modal/settings/kit/mot
 import { panelTokens } from './panelTheme';
 import { FOLDED_PX } from './SongHeader';
 import { useMeasuredSize } from './useMeasuredSize';
+import { isCompactUiScaleActive } from '../../../stores/useUiScaleSettingsStore';
 
 // src/components/panelTab/shell/PanelShell.tsx
 // The frame of the playing page's panel: where it sits, the glass surface, and how tall it is. The
@@ -22,6 +23,8 @@ const HANDLE_ROOM_PX = 60;
 const BARE_GAP_PX = 8;
 /** What stays free between the surface and the top of the window. */
 const TOP_MARGIN_PX = 56;
+/** 手机横屏紧凑档：矮屏放不下那 56 + 60 的边距，收到 8，把高度让给面板内容与弹出的选择器。 */
+const COMPACT_TOP_MARGIN_PX = 8;
 const PADDING_PX = 12;
 const DOCK_HEIGHT_PX = 36;
 const DOCK_GAP_PX = 12;
@@ -59,16 +62,19 @@ const PanelSurface: React.FC<PanelSurfaceProps> = ({ hasHandle, isCover, tabKey,
     const reduced = useKitReducedMotion();
     const bottomBarBottomPx = usePlayerBottomBarBottomPx();
     // What is under the surface: the handle, or a small gap. A variable, so the two heights below follow it at once.
+    // 手机横屏紧凑档收掉顶边距：矮屏上那 56px 会把面板压成一条；下面的把手位置保持不变。
+    const compact = isCompactUiScaleActive();
     const underPx = hasHandle ? HANDLE_ROOM_PX : BARE_GAP_PX;
+    const topMargin = compact ? COMPACT_TOP_MARGIN_PX : TOP_MARGIN_PX;
     // Never taller than the window allows, wherever the bottom bar's baseline has been lifted to.
     const maxHeight = useTransform(
         bottomBarBottomPx,
         // 100dvh 已含系统栏；安全区变量在 Android 全面屏上再抬一次，避免面板顶进挖孔或导航栏。
-        bottom => `calc(100dvh - var(--pn-under) - ${bottom + TOP_MARGIN_PX}px - var(--folia-safe-area-top, 0px) - var(--folia-safe-area-bottom, 0px))`,
+        bottom => `calc(100dvh - var(--pn-under) - ${bottom + topMargin}px - var(--folia-safe-area-top, 0px) - var(--folia-safe-area-bottom, 0px))`,
     );
     const headerRoom = useTransform(
         bottomBarBottomPx,
-        bottom => `calc(100dvh - var(--pn-under) - ${bottom + TOP_MARGIN_PX + 2 * PADDING_PX + DOCK_GAP_PX + DOCK_HEIGHT_PX}px - var(--folia-safe-area-top, 0px) - var(--folia-safe-area-bottom, 0px))`,
+        bottom => `calc(100dvh - var(--pn-under) - ${bottom + topMargin + 2 * PADDING_PX + DOCK_GAP_PX + DOCK_HEIGHT_PX}px - var(--folia-safe-area-top, 0px) - var(--folia-safe-area-bottom, 0px))`,
     );
     const scrollRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
