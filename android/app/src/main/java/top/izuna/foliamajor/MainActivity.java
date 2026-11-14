@@ -16,6 +16,7 @@ public class MainActivity extends BridgeActivity {
     private FoliaWindowInsets windowInsets;
     private boolean immersive;
     private boolean isDaylight;
+    private boolean landscapeCompact;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +45,18 @@ public class MainActivity extends BridgeActivity {
     void configureWindow(boolean immersive, boolean isDaylight) {
         this.immersive = immersive;
         this.isDaylight = isDaylight;
+        applyWindowRules();
+    }
+
+    // 手机横屏紧凑档：常驻收起系统栏并收回安全区，把矮屏高度让给内容；竖屏 / 平板传 false 复原。
+    void setLandscapeCompact(boolean enabled) {
+        if (this.landscapeCompact == enabled) {
+            return;
+        }
+        this.landscapeCompact = enabled;
+        if (windowInsets != null) {
+            windowInsets.setSafeAreaBypass(enabled);
+        }
         applyWindowRules();
     }
 
@@ -81,7 +94,7 @@ public class MainActivity extends BridgeActivity {
         controller.setAppearanceLightStatusBars(isDaylight);
         controller.setAppearanceLightNavigationBars(isDaylight);
         controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-        if (immersive) {
+        if (immersive || landscapeCompact) {
             controller.hide(WindowInsetsCompat.Type.systemBars());
         } else {
             controller.show(WindowInsetsCompat.Type.systemBars());
