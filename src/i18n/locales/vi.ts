@@ -1383,7 +1383,8 @@ export default {
     "controls": "Điều khiển",
     "visualizer": "Hoạt ảnh lời bài hát",
     "playlist": "Danh sách phát",
-    "account": "Tài khoản"
+    "account": "Tài khoản",
+    "back": "Quay lại"
   },
   "lyricExport": {
     "exported": "Đã xuất lời bài hát",
