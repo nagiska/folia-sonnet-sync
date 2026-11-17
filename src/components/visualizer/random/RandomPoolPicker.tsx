@@ -1,5 +1,7 @@
 import React, { useRef } from 'react';
+import { ChevronLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { isCompactUiScaleActive } from '../../../stores/useUiScaleSettingsStore';
 import { Button, PictureChecks, Popover } from '../../modal/settings/kit';
 import { PickerMoreButton } from '../../panelTab/QuickEffectPicker';
 import { drawRandomPoolChoice } from './lyricStyleChoices';
@@ -25,11 +27,24 @@ const RandomPoolPicker: React.FC<RandomPoolPickerProps> = ({ anchorRef, open, on
     const { t } = useTranslation();
     const pool = useRandomPool();
     const gridRef = useRef<HTMLDivElement>(null);
+    const compact = isCompactUiScaleActive();
 
     return (
         <Popover anchorRef={anchorRef} open={open} onClose={onClose} fill aria-label={t('options.randomPool')} className="flex flex-col rounded-[14px] pb-1 pt-2">
-            <div className="mb-1 flex min-h-7 shrink-0 items-center justify-between gap-3 pl-4 pr-3">
-                <span className="text-[13px] font-semibold leading-5 text-[color:var(--st-t2)]">{t('options.randomPool')}</span>
+            <div className={`mb-1 flex min-h-7 shrink-0 items-center justify-between gap-3 pr-3 ${compact ? 'pl-1' : 'pl-4'}`}>
+                <span className="flex min-w-0 items-center gap-1">
+                    {compact && (
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            aria-label={t('panel.back')}
+                            className="st-t-fast flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[color:var(--st-t2)] transition-colors hover:bg-[var(--st-fill)] hover:text-[color:var(--st-t1)]"
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                    )}
+                    <span className="truncate text-[13px] font-semibold leading-5 text-[color:var(--st-t2)]">{t('options.randomPool')}</span>
+                </span>
                 <span className="flex items-center gap-1.5">
                     <span className="text-xs text-[color:var(--st-t3)]">{pool.countLabel}</span>
                     <Button variant="quiet" disabled={pool.allOn} onClick={() => pool.selectAll(gridRef.current)}>{t('options.randomVisualizerSelectAll')}</Button>

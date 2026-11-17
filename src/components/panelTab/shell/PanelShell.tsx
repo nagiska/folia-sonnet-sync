@@ -26,6 +26,8 @@ const BARE_GAP_PX = 8;
 const TOP_MARGIN_PX = 56;
 /** 手机横屏紧凑档：矮屏放不下那 56 + 60 的边距，收到 8，把高度让给面板内容与弹出的选择器。 */
 const COMPACT_TOP_MARGIN_PX = 8;
+/** 紧凑档页签改竖排放在左侧，这条轨道的宽度；内容让出它，高度不再被底部页签吃掉。 */
+const COMPACT_RAIL_PX = 64;
 const PADDING_PX = 12;
 const DOCK_HEIGHT_PX = 36;
 const DOCK_GAP_PX = 12;
@@ -76,9 +78,11 @@ const PanelSurface: React.FC<PanelSurfaceProps> = ({ hasHandle, isCover, tabKey,
         // 100dvh 已含系统栏；安全区变量在 Android 全面屏上再抬一次，避免面板顶进挖孔或导航栏。
         bottom => `calc(100dvh - var(--pn-under) - ${bottom + topMargin}px - var(--folia-safe-area-top, 0px) - var(--folia-safe-area-bottom, 0px))`,
     );
+    // 紧凑档页签在侧边（不占底部高度），内容可以拿到整块高度；其余形态仍扣掉底部页签。
+    const dockRoom = compact ? 0 : DOCK_GAP_PX + DOCK_HEIGHT_PX;
     const headerRoom = useTransform(
         bottomBarBottomPx,
-        bottom => `calc(100dvh - var(--pn-under) - ${bottom + topMargin + 2 * PADDING_PX + DOCK_GAP_PX + DOCK_HEIGHT_PX}px - var(--folia-safe-area-top, 0px) - var(--folia-safe-area-bottom, 0px))`,
+        bottom => `calc(100dvh - var(--pn-under) - ${bottom + topMargin + 2 * PADDING_PX + dockRoom}px - var(--folia-safe-area-top, 0px) - var(--folia-safe-area-bottom, 0px))`,
     );
     const scrollRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -108,9 +112,11 @@ const PanelSurface: React.FC<PanelSurfaceProps> = ({ hasHandle, isCover, tabKey,
             exit={{ ...away, transition: kitTransition('move', reduced) }}
             data-testid="unified-panel-surface"
             data-still={isStill || undefined}
-            className="st-window pointer-events-auto @container hide-scrollbar flex w-[22.5rem] max-w-[calc(100vw-2rem)] flex-col overflow-y-auto overflow-x-hidden rounded-[20px] bg-[var(--pn-glass)] text-[color:var(--st-t1)] shadow-[var(--pn-shadow)] backdrop-blur-[40px] backdrop-saturate-[1.3] [&[data-still]_*]:transition-none"
+            className={`st-window pointer-events-auto @container hide-scrollbar relative flex ${compact ? 'w-[34rem]' : 'w-[22.5rem]'} max-w-[calc(100vw-2rem)] flex-col overflow-y-auto overflow-x-hidden rounded-[20px] bg-[var(--pn-glass)] text-[color:var(--st-t1)] shadow-[var(--pn-shadow)] backdrop-blur-[40px] backdrop-saturate-[1.3] [&[data-still]_*]:transition-none`}
             style={{
                 ...panelTokens(isDaylight, theme, reduced),
+                // 紧凑档左侧让出页签轨道，内容整体右移，竖直方向不再被底部页签占高度。
+                paddingLeft: compact ? PADDING_PX + COMPACT_RAIL_PX : PADDING_PX,
                 '--pn-under': `${underPx}px`,
                 '--pn-room': headerRoom,
                 // What is left of that room under the song's one line and the hairline: a tab with a
@@ -133,7 +139,7 @@ const PanelSurface: React.FC<PanelSurfaceProps> = ({ hasHandle, isCover, tabKey,
             {/* As wide as the surface, so the scrollbar (the kit's, as wide as the padding) lies in the surface's own padding. */}
             <div
                 className="st-t-unfold flex min-h-0 shrink flex-col overflow-hidden transition-[height]"
-                style={{ height: bodyHeight, marginInline: -PADDING_PX }}
+                style={{ height: bodyHeight, marginInline: compact ? 0 : -PADDING_PX }}
             >
                 <div
                     className="h-px shrink-0 bg-[var(--st-line)]"
@@ -151,9 +157,16 @@ const PanelSurface: React.FC<PanelSurfaceProps> = ({ hasHandle, isCover, tabKey,
                 </div>
             </div>
 
-            <div className="shrink-0" style={{ height: DOCK_HEIGHT_PX, marginTop: DOCK_GAP_PX }}>
-                {dock}
-            </div>
+            {compact ? (
+                // 紧凑档：页签竖排贴在左侧轨道，不占底部高度，把整块高度让给内容。
+                <div className="absolute" style={{ left: PADDING_PX, top: PADDING_PX, bottom: PADDING_PX, width: COMPACT_RAIL_PX }}>
+                    {dock}
+                </div>
+            ) : (
+                <div className="shrink-0" style={{ height: DOCK_HEIGHT_PX, marginTop: DOCK_GAP_PX }}>
+                    {dock}
+                </div>
+            )}
         </motion.div>
     );
 };

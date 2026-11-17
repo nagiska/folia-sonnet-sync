@@ -1383,7 +1383,8 @@ export default {
     "controls": "Controls",
     "visualizer": "Lyrics Animation",
     "playlist": "Playlist",
-    "account": "Quality"
+    "account": "Quality",
+    "back": "Back"
   },
   "lyricExport": {
     "exported": "Lyrics exported",

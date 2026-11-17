@@ -1383,7 +1383,8 @@ export default {
     "controls": "Kontrol",
     "visualizer": "Animasi Lirik",
     "playlist": "Playlist",
-    "account": "Kualitas"
+    "account": "Kualitas",
+    "back": "Kembali"
   },
   "lyricExport": {
     "exported": "Lirik diekspor",
