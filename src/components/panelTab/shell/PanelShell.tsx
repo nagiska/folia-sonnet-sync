@@ -115,8 +115,6 @@ const PanelSurface: React.FC<PanelSurfaceProps> = ({ hasHandle, isCover, tabKey,
             className={`st-window pointer-events-auto @container hide-scrollbar relative flex ${compact ? 'w-[34rem]' : 'w-[22.5rem]'} max-w-[calc(100vw-2rem)] flex-col overflow-y-auto overflow-x-hidden rounded-[20px] bg-[var(--pn-glass)] text-[color:var(--st-t1)] shadow-[var(--pn-shadow)] backdrop-blur-[40px] backdrop-saturate-[1.3] [&[data-still]_*]:transition-none`}
             style={{
                 ...panelTokens(isDaylight, theme, reduced),
-                // 紧凑档左侧让出页签轨道，内容整体右移，竖直方向不再被底部页签占高度。
-                paddingLeft: compact ? PADDING_PX + COMPACT_RAIL_PX : PADDING_PX,
                 '--pn-under': `${underPx}px`,
                 '--pn-room': headerRoom,
                 // What is left of that room under the song's one line and the hairline: a tab with a
@@ -126,6 +124,8 @@ const PanelSurface: React.FC<PanelSurfaceProps> = ({ hasHandle, isCover, tabKey,
                 // tab's least height makes the surface itself scroll, so the tab row stays in reach.
                 maxHeight,
                 padding: PADDING_PX,
+                // 紧凑档左侧让出页签轨道，内容整体右移（须在 padding 简写之后，否则被覆盖）。
+                paddingLeft: compact ? PADDING_PX + COMPACT_RAIL_PX : PADDING_PX,
                 marginBottom: underPx,
                 // The centre of the handle, at the surface's right end. Docked on the compact capsule the
                 // 40px handle sits 8px in from the capsule's right edge, its centre 38px under the surface.
