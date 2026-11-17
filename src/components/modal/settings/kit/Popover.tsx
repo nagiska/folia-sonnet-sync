@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { isCompactUiScaleActive } from '../../../stores/useUiScaleSettingsStore';
 import { POPOVER_GUTTER, placePopover, type PopoverAlign, type PopoverPlace, type PopoverSide } from './popoverPlace';
 
 // src/components/modal/settings/kit/Popover.tsx
@@ -72,6 +73,9 @@ export const Popover: React.FC<PopoverProps> = ({
             return undefined;
         }
         const frame = host.getBoundingClientRect();
+        // 手机横屏的紧凑档：窗口太矮，锚点上下都剩不下地方，铺满宽度的层改从窗口顶长到底，
+        // 整块当成抽屉用（内部滚动），不再按锚点位置挤成一条。
+        const sheet = fill && isCompactUiScaleActive();
         setPlace(placePopover(
             anchor.getBoundingClientRect(),
             { width: layer.offsetWidth, height: layer.scrollHeight },
@@ -84,7 +88,7 @@ export const Popover: React.FC<PopoverProps> = ({
                 scrollLeft: host.scrollLeft,
                 scrollTop: host.scrollTop,
             },
-            { side, align, fill },
+            { side, align, fill, fillHeight: sheet },
         ));
         // A part that cannot take focus (a disabled entry) is passed over.
         const asked = focusRef?.current?.matches(':disabled') ? null : focusRef?.current;

@@ -115,6 +115,25 @@ describe('where a popover goes', () => {
             .toMatchObject({ left: 8, right: 8, top: 88 });
     });
 
+    it('takes the whole window height as a sheet, wherever the anchor sits, when asked to fill the height', () => {
+        // A phone held sideways: the window is shorter than the layer, and the anchor sits in its middle.
+        const short = { ...WINDOW, height: 260 };
+        expect(placePopover(anchorAt(140, 180), LAYER, short, { side: 'under', align: 'start', fill: true, fillHeight: true }))
+            .toEqual({ side: 'under', left: 8, right: 8, top: 8, maxHeight: 244 });
+        // The anchor's position and the side asked for no longer change the room.
+        expect(placePopover(anchorAt(140, 60), LAYER, short, { side: 'over', align: 'end', fill: true, fillHeight: true }))
+            .toEqual({ side: 'under', left: 8, right: 8, top: 8, maxHeight: 244 });
+        // Without fill the layer still lines up with its anchor sideways.
+        expect(placePopover(anchorAt(340, 100), LAYER, WINDOW, { side: 'under', align: 'end', fillHeight: true }))
+            .toEqual({ side: 'under', right: 80, top: 8, maxHeight: 584 });
+    });
+
+    it('hangs the sheet from the scrolled top of a window whose content is scrolled', () => {
+        const scrolled = { ...WINDOW, scrollLeft: 10, scrollTop: 40 };
+        expect(placePopover(anchorAt(300, 100), LAYER, scrolled, { side: 'under', align: 'end', fill: true, fillHeight: true }))
+            .toEqual({ side: 'under', left: 18, right: -2, top: 48, maxHeight: 584 });
+    });
+
     it('is centred on its anchor, and moved in at the edge of the screen', () => {
         const screen = { left: 0, top: 0, width: 1000, height: 700 };
         const label = { width: 120, height: 24 };
