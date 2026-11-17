@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { isCompactUiScaleActive } from '../../../stores/useUiScaleSettingsStore';
+import { isCompactUiScaleActive } from '../../../../stores/useUiScaleSettingsStore';
 import { POPOVER_GUTTER, placePopover, type PopoverAlign, type PopoverPlace, type PopoverSide } from './popoverPlace';
 
 // src/components/modal/settings/kit/Popover.tsx
