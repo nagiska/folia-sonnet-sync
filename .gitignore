@@ -112,3 +112,5 @@ android/app/*.p12
 android/app/*.jks
 # Coven: the supervisor session's local ledger (packages/coven/README.md)
 .coven/
+# ignore workbuddy
+.workbuddy/
