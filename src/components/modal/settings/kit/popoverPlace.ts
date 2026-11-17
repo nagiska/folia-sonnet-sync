@@ -26,6 +26,12 @@ export type PopoverPlaceOptions = {
     align: PopoverAlign;
     /** As wide as the container, less the gutter at both sides. */
     fill?: boolean;
+    /**
+     * Take the container's whole height, gutter to gutter, wherever the anchor sits: a sheet over
+     * the window instead of a layer beside its anchor. For a window too short to leave room on
+     * either side of the anchor (a phone held sideways).
+     */
+    fillHeight?: boolean;
 };
 
 /** The position as distances from the container's edges: what the layer's `style` takes. */
@@ -51,9 +57,28 @@ export const placePopover = (
     anchor: Box,
     layer: { width: number; height: number },
     container: PopoverContainer,
-    { side, align, fill = false }: PopoverPlaceOptions,
+    { side, align, fill = false, fillHeight = false }: PopoverPlaceOptions,
 ): PopoverPlace => {
     const { scrollLeft = 0, scrollTop = 0 } = container;
+    // A distance from the container's left or right edge, held between the two gutters.
+    const inside = (distance: number) => Math.max(POPOVER_GUTTER, Math.min(distance, container.width - layer.width - POPOVER_GUTTER));
+    const horizontal = fill
+        ? { left: POPOVER_GUTTER + scrollLeft, right: POPOVER_GUTTER - scrollLeft }
+        : align === 'end'
+            ? { right: inside(container.left + container.width - (anchor.left + anchor.width)) - scrollLeft }
+            : { left: inside(anchor.left - container.left + (align === 'center' ? (anchor.width - layer.width) / 2 : 0)) + scrollLeft };
+
+    // A sheet hangs from the window's top and takes all of its height: the anchor's own position
+    // no longer decides how much room the layer gets.
+    if (fillHeight) {
+        return {
+            side: 'under',
+            ...horizontal,
+            top: POPOVER_GUTTER + scrollTop,
+            maxHeight: Math.max(0, container.height - 2 * POPOVER_GUTTER),
+        };
+    }
+
     const room = {
         under: container.top + container.height - POPOVER_GUTTER - (anchor.top + anchor.height + POPOVER_GAP),
         over: anchor.top - POPOVER_GAP - (container.top + POPOVER_GUTTER),
@@ -63,13 +88,6 @@ export const placePopover = (
     const vertical = placed === 'under'
         ? { top: anchor.top + anchor.height + POPOVER_GAP - container.top + scrollTop }
         : { bottom: container.top + container.height - anchor.top + POPOVER_GAP - scrollTop };
-    // A distance from the container's left or right edge, held between the two gutters.
-    const inside = (distance: number) => Math.max(POPOVER_GUTTER, Math.min(distance, container.width - layer.width - POPOVER_GUTTER));
-    const horizontal = fill
-        ? { left: POPOVER_GUTTER + scrollLeft, right: POPOVER_GUTTER - scrollLeft }
-        : align === 'end'
-            ? { right: inside(container.left + container.width - (anchor.left + anchor.width)) - scrollLeft }
-            : { left: inside(anchor.left - container.left + (align === 'center' ? (anchor.width - layer.width) / 2 : 0)) + scrollLeft };
 
     return { side: placed, ...horizontal, ...vertical, maxHeight: Math.max(0, room[placed]) };
 };
