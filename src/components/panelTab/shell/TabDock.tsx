@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { isCompactUiScaleActive } from '../../../stores/useUiScaleSettingsStore';
 import { Segments } from './Segments';
 import { useMeasuredSize } from './useMeasuredSize';
 
@@ -27,6 +28,32 @@ export const TabDock = <T extends string>({ tabs, currentTab, onTabChange }: Tab
     const names = useMeasuredSize(namesRef);
     // One pixel of slack for widths the browser rounds.
     const showNames = names.width <= row.width + 1;
+    const compact = isCompactUiScaleActive();
+
+    // 手机横屏紧凑档：页签竖排成左侧轨道（图标在上、名字在下），不再占底部高度。
+    if (compact) {
+        return (
+            <div role="group" className="flex h-full flex-col gap-1 overflow-y-auto rounded-[14px] bg-[var(--st-fill)] p-1">
+                {tabs.map(tab => {
+                    const selected = tab.id === currentTab;
+                    return (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            data-ponder-panel-tab-button={tab.id}
+                            aria-pressed={selected}
+                            aria-label={tab.label}
+                            onClick={() => { if (!selected) onTabChange(tab.id); }}
+                            className={`st-t-fast st-focus-inside flex shrink-0 flex-col items-center justify-center gap-1 rounded-[10px] py-2 text-[11px] leading-none transition-colors ${selected ? 'bg-[var(--st-raise)] text-[color:var(--st-t1)]' : 'text-[color:var(--st-t2)] hover:text-[color:var(--st-t1)]'}`}
+                        >
+                            <tab.icon size={16} />
+                            <span className="max-w-full truncate px-0.5">{tab.label}</span>
+                        </button>
+                    );
+                })}
+            </div>
+        );
+    }
 
     return (
         <div ref={rowRef} className="relative h-full">

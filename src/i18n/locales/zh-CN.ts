@@ -1383,7 +1383,8 @@ export default {
     "controls": "控制",
     "visualizer": "歌词动画",
     "playlist": "播放列表",
-    "account": "音质"
+    "account": "音质",
+    "back": "返回上一级"
   },
   "lyricExport": {
     "exported": "歌词已导出",
