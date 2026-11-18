@@ -67,12 +67,14 @@ const PanelHandle: React.FC<PanelHandleProps> = ({
     React.useEffect(() => {
         if (hideToggleButton) return undefined;
         const store = useBottomDockStore.getState();
-        store.setCompanion('panel-toggle', true);
+        // 只有真挂到胶囊右端时才登记挂件、让胶囊预留位置；横屏紧凑档按钮在右下角原位，
+        // 不登记，避免胶囊右端再留一个空入口、和右下角按钮看起来像两个重复功能。
+        store.setCompanion('panel-toggle', isDocked);
         return () => {
             useBottomDockStore.getState().setCompanion('panel-toggle', false);
             releaseCompanionHover(true);
         };
-    }, [hideToggleButton]);
+    }, [hideToggleButton, isDocked]);
     const toggleButtonMotionClass = (isOpen || isGuideLineVisible || isDragging || isDocked)
         ? 'translate-x-0 opacity-100'
         : supportsHover
