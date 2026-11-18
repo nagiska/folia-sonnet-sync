@@ -38,6 +38,20 @@ installAndroidUiScale();
 // if (import.meta.env.DEV) installCoverSizeAudit();
 installGlobalVisualizerFrameRateLimiter();
 
-void import('./bootstrap');
+// 覆盖更新时旧版本残留的持久化数据可能让启动 hydration 抛错（清空重装则正常）。
+// 这里兜底：bootstrap 加载失败时一次性清掉残留存储并重启，把「更新闪退」变成一次自动恢复；
+// sessionStorage 标记防止无限重启循环。成功启动后清掉标记。
+void import('./bootstrap').then(() => {
+    try { sessionStorage.removeItem('folia_boot_recovered'); } catch { /* 隐私模式等不可用时忽略 */ }
+}).catch((error) => {
+    console.error('[boot] 启动失败，尝试清理旧版本残留数据后恢复', error);
+    try {
+        if (sessionStorage.getItem('folia_boot_recovered') !== '1') {
+            sessionStorage.setItem('folia_boot_recovered', '1');
+            localStorage.clear();
+            location.reload();
+        }
+    } catch { /* 存储不可用时不再重试，避免循环 */ }
+});
 // window.__foliaDev and the ?skipStartup / ?mockSong launch flags (src/dev/devLaunchFlags.ts).
 if (import.meta.env.DEV) void import('./dev/devTools');
