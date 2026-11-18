@@ -26,8 +26,10 @@ const BARE_GAP_PX = 8;
 const TOP_MARGIN_PX = 56;
 /** 手机横屏紧凑档：矮屏放不下那 56 + 60 的边距，收到 8，把高度让给面板内容与弹出的选择器。 */
 const COMPACT_TOP_MARGIN_PX = 8;
-/** 紧凑档页签改竖排放在左侧，这条轨道的宽度；内容让出它，高度不再被底部页签吃掉。 */
+/** 紧凑档页签改竖排放在右侧，这条轨道的宽度；内容让出它，高度不再被底部页签吃掉。 */
 const COMPACT_RAIL_PX = 64;
+/** 轨道与内容之间的留白，让侧边栏和界面分隔清楚。 */
+const COMPACT_RAIL_GAP_PX = 14;
 const PADDING_PX = 12;
 const DOCK_HEIGHT_PX = 36;
 const DOCK_GAP_PX = 12;
@@ -124,8 +126,8 @@ const PanelSurface: React.FC<PanelSurfaceProps> = ({ hasHandle, isCover, tabKey,
                 // tab's least height makes the surface itself scroll, so the tab row stays in reach.
                 maxHeight,
                 padding: PADDING_PX,
-                // 紧凑档左侧让出页签轨道，内容整体右移（须在 padding 简写之后，否则被覆盖）。
-                paddingLeft: compact ? PADDING_PX + COMPACT_RAIL_PX : PADDING_PX,
+                // 紧凑档右侧让出页签轨道+留白，内容整体左移（须在 padding 简写之后，否则被覆盖）。
+                paddingRight: compact ? PADDING_PX + COMPACT_RAIL_PX + COMPACT_RAIL_GAP_PX : PADDING_PX,
                 marginBottom: underPx,
                 // The centre of the handle, at the surface's right end. Docked on the compact capsule the
                 // 40px handle sits 8px in from the capsule's right edge, its centre 38px under the surface.
@@ -158,8 +160,8 @@ const PanelSurface: React.FC<PanelSurfaceProps> = ({ hasHandle, isCover, tabKey,
             </div>
 
             {compact ? (
-                // 紧凑档：页签竖排贴在左侧轨道，不占底部高度，把整块高度让给内容。
-                <div className="absolute" style={{ left: PADDING_PX, top: PADDING_PX, bottom: PADDING_PX, width: COMPACT_RAIL_PX }}>
+                // 紧凑档：页签竖排贴在右侧轨道，不占底部高度，把整块高度让给内容。
+                <div className="absolute" style={{ right: PADDING_PX, top: PADDING_PX, bottom: PADDING_PX, width: COMPACT_RAIL_PX }}>
                     {dock}
                 </div>
             ) : (
@@ -176,7 +178,8 @@ const PanelShell: React.FC<PanelShellProps> = ({ isOpen, handle, ...surface }) =
     const { ref: layoutRef, invalidate: invalidateLayout } = usePlayerOverlayObstacle('player-panel', 'panel');
     // 紧凑档（progress-bar v3）：按钮挂在胶囊右端，面板从胶囊右端长出来，右边和胶囊对齐、底边在胶囊顶上
     // （bottomDock.css 平移这一层）。面板开着时胶囊不再悬停展开，免得两块玻璃叠在一起。
-    const isDocked = useIsDockCompactWithCapsule();
+    // 横屏紧凑档有自己的侧边页签布局，不再挂胶囊，面板与按钮都回到右下角原位。
+    const isDocked = useIsDockCompactWithCapsule() && !isCompactUiScaleActive();
     useEffect(() => {
         useBottomDockStore.getState().setCompanionOpen('panel', isOpen);
         return () => useBottomDockStore.getState().setCompanionOpen('panel', false);

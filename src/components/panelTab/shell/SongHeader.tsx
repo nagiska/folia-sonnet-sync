@@ -52,9 +52,9 @@ const SongHeader: React.FC<SongHeaderProps> = ({ isBig, currentSong, coverUrl, l
                 data-ponder-panel-artwork
                 onClick={isBig ? undefined : onShowCover}
                 className={`st-t-unfold absolute left-0 top-0 grid place-items-center overflow-hidden bg-[var(--st-fill)] transition-[width,height,border-radius] ${isBig ? 'rounded-[10px]' : 'cursor-pointer rounded-lg'}`}
-                // 大封面始终是正方形（边长=可用高度，不超过面板内宽），矮屏上居中显示完整封面，
-                // 而不是拉成宽条再 object-cover 裁掉上下。
-                style={isBig ? { width: coverHeight, height: coverHeight, left: 0, right: 0, marginInline: 'auto' } : { width: FOLDED_PX, height: FOLDED_PX }}
+                // 大封面始终是正方形（边长=可用高度，不超过面板内宽），完整不裁切；
+                // 左对齐与下方标题/credits 同一起点，避免居中造成的错位感。
+                style={isBig ? { width: coverHeight, height: coverHeight } : { width: FOLDED_PX, height: FOLDED_PX }}
             >
                 {coverUrl ? (
                     <img src={getSizedCoverUrl(coverUrl, 512)} alt="Art" decoding="async" className="h-full w-full object-cover" />
