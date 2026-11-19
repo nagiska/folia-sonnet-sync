@@ -38,3 +38,11 @@ export const removeStoredKey = (key: string) => {
         localStorage.removeItem(key);
     }
 };
+
+// 启动兜底专用：覆盖更新时旧残留数据致崩溃，一次性清空持久化设置再重启。
+// 直接清 localStorage 只允许在这个统一入口里做（Dedicatus 规则）。
+export const clearStoredAll = () => {
+    if (typeof window !== 'undefined') {
+        localStorage.clear();
+    }
+};

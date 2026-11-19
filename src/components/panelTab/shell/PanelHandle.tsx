@@ -6,6 +6,7 @@ import type { Theme } from '../../../types';
 import { usePlayerBottomBarBottomPx } from '../../../hooks/usePlayerBottomBarBottomPx';
 import { usePlayerOverlayObstacle } from '../../../hooks/usePlayerOverlayLayout';
 import { holdCompanionHover, releaseCompanionHover, useBottomDockStore, useIsDockCompactWithCapsule } from '../../../stores/useBottomDockStore';
+import { isCompactUiScaleActive } from '../../../stores/useUiScaleSettingsStore';
 
 // src/components/panelTab/shell/PanelHandle.tsx
 // The round button at the bottom right of the playing page that opens the panel and, white, closes
@@ -53,7 +54,8 @@ const PanelHandle: React.FC<PanelHandleProps> = ({
     // 紧凑档（窗口窄于 960，progress-bar v3）里按钮挂到进度条胶囊的右端：缩成 40、去掉自己的底色，
     // 位置由 bottomDock.css 按 <html data-bottom-layout> 平移过去。挂着时没有左滑开命令面板的手势：
     // 滑轨会横在胶囊上；命令面板从点胶囊或快捷行最右那一格开。
-    const isDocked = useIsDockCompactWithCapsule();
+    // 横屏紧凑档不挂胶囊，按钮固定在屏幕右下角（上游原位），左滑开命令面板的手势也保留。
+    const isDocked = useIsDockCompactWithCapsule() && !isCompactUiScaleActive();
     const canSlideOpenCommandPalette = !isOpen && Boolean(onOpenCommandPalette) && !isDocked;
     // 按钮这一刻画不画（下面 AnimatePresence 的条件）。它被拿掉时浏览器不会补发 pointerleave：
     // 不在这里清掉，胶囊会一直当作还在悬停、一直展开着。
@@ -65,12 +67,14 @@ const PanelHandle: React.FC<PanelHandleProps> = ({
     React.useEffect(() => {
         if (hideToggleButton) return undefined;
         const store = useBottomDockStore.getState();
-        store.setCompanion('panel-toggle', true);
+        // 只有真挂到胶囊右端时才登记挂件、让胶囊预留位置；横屏紧凑档按钮在右下角原位，
+        // 不登记，避免胶囊右端再留一个空入口、和右下角按钮看起来像两个重复功能。
+        store.setCompanion('panel-toggle', isDocked);
         return () => {
             useBottomDockStore.getState().setCompanion('panel-toggle', false);
             releaseCompanionHover(true);
         };
-    }, [hideToggleButton]);
+    }, [hideToggleButton, isDocked]);
     const toggleButtonMotionClass = (isOpen || isGuideLineVisible || isDragging || isDocked)
         ? 'translate-x-0 opacity-100'
         : supportsHover

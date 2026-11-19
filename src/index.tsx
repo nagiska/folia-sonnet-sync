@@ -8,6 +8,7 @@ import { installAppleMusicAndroidBridge } from './services/appleMusicAndroidBrid
 import { installAndroidUiScale } from './platform/androidUiScale';
 import './platform/androidUiScale.css';
 import { isPerfCheckSurface } from './utils/appSurface';
+import { clearStoredAll } from './stores/storagePrimitives';
 // import { installCoverSizeAudit } from './services/debug/coverSizeSamples';
 // @ts-ignore
 globalThis.Buffer = Buffer;
@@ -38,6 +39,18 @@ installAndroidUiScale();
 // if (import.meta.env.DEV) installCoverSizeAudit();
 installGlobalVisualizerFrameRateLimiter();
 
-void import('./bootstrap');
+// 覆盖更新时旧版本残留的持久化数据可能让启动 hydration 抛错（清空重装则正常）。
+// 这里兜底：bootstrap 加载失败时一次性清掉残留存储并重启，把「更新闪退」变成一次自动恢复。
+// 循环防护用 window.name（跨 reload 保留、不属于持久化存储）；成功启动后复位。
+void import('./bootstrap').then(() => {
+    window.name = '';
+}).catch((error: unknown) => {
+    console.error('[boot] 启动失败，尝试清理旧版本残留数据后恢复', error);
+    if (window.name !== 'folia_boot_recovered') {
+        window.name = 'folia_boot_recovered';
+        clearStoredAll();
+        location.reload();
+    }
+});
 // window.__foliaDev and the ?skipStartup / ?mockSong launch flags (src/dev/devLaunchFlags.ts).
 if (import.meta.env.DEV) void import('./dev/devTools');
