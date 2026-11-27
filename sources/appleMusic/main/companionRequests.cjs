@@ -98,6 +98,25 @@ function validateRequest(message) {
 async function readFromPage(request, controlQueue, updateFavorite, addPlaylistTracks, readPersonalStation, alignStorefront) {
     try {
         const mk = window.MusicKit?.getInstance();
+        const android = window.__foliaCompanionHost === 'android';
+        // Desktop clears the companion's storage in its host. Android signs out of the actual WebView session.
+        if (android && request.operation === 'logout') {
+            if (!mk) return { ok: false, error: 'not-ready' };
+            if (typeof mk.unauthorize !== 'function') return { ok: false, error: 'unsupported' };
+            if (window.__foliaStart) window.__foliaStart.cancelled = true;
+            await mk.unauthorize();
+            window.__foliaStart = null;
+            window.__foliaPreparedQueue = [];
+            window.__foliaLastPlay = null;
+            window.__foliaLiveStation = '';
+            window.__foliaAccountStorefront = '';
+            window.__foliaStorefront = null;
+            window.__foliaStorefrontAligned = false;
+            window.__foliaSubscribed = undefined;
+            window.__foliaSubscription = null;
+            window.__foliaOriginalCache = null;
+            return { ok: true, data: {} };
+        }
         const modern = mk?.api?.v3;
         const legacy = mk?.api;
         // The webpage wrapper takes flat RequestInit, while SDK v3 takes { fetchOptions }.
@@ -109,7 +128,7 @@ async function readFromPage(request, controlQueue, updateFavorite, addPlaylistTr
         if (!call) return { ok: false, error: 'not-ready' };
         // Starts and prepared queues play in the account's region, whatever region the page is in.
         if (['playSong', 'playStation', 'prepareNext'].includes(request.operation)) {
-            try { await alignStorefront(mk); } catch { /* The start goes on in the page's own region. */ }
+            try { await alignStorefront(mk, call); } catch { /* The start goes on in the page's own region. */ }
         }
         if (request.operation === 'addPlaylistTracks') return await addPlaylistTracks(call, request.params);
         if (request.operation === 'likeSong') return await updateFavorite(call, request.params);
@@ -125,6 +144,19 @@ async function readFromPage(request, controlQueue, updateFavorite, addPlaylistTr
                 pendingStart.failed = true;
             }
             const start = window.__foliaStart;
+            const elapsed = start ? Date.now() - start.startedAt : 0;
+            const state = Number(mk.playbackState);
+            // The hidden WebView sometimes accepts the queue but stays idle. Keep its one-shot retry.
+            if (android && start && !start.cancelled && !start.failed && !start.played && !start.nudged
+                && elapsed >= 4000 && elapsed < 15000 && mk.isPlaying !== true && (state === 0 || state === 4)
+                && typeof mk.play === 'function') {
+                start.nudged = true;
+                Promise.resolve().then(() => {
+                    if (window.__foliaStart === start && !start.cancelled && mk.isPlaying !== true) return mk.play();
+                }).then(async () => {
+                    if (window.__foliaStart === start && start.cancelled) await mk.pause();
+                }).catch(() => { console.warn('[AppleMusic] Android WebView start retry was rejected'); });
+            }
             // Sounding is playing on two answers in a row with the position moving, as the Windows
             // visibility pin counts it (nativeSpawn.cjs): MusicKit says "playing" for a moment before it
             // loads, and that moment is not the song sounding.
@@ -154,9 +186,9 @@ async function readFromPage(request, controlQueue, updateFavorite, addPlaylistTr
                 // stopped and dropped it (seen on Windows, #1336), or play() settled with nothing loaded.
                 // Either stays that way; waiting on it only shows a song that never sounds as paused. A
                 // stopped player that has not loaded the track yet may still be switching from the last one.
-                else if (start.song && !mk.nowPlayingItem && Date.now() - start.startedAt >= 2000
-                    && ((Number(mk.playbackState) === 4 && (start.loaded || !start.pending))
-                        || (Number(mk.playbackState) === 0 && !start.pending))) {
+                // Android gets the previous bridge's retry window before guessing the start has failed.
+                else if (start.song && !mk.nowPlayingItem && elapsed >= (android ? 15000 : 2000)
+                    && ((state === 4 && (start.loaded || !start.pending)) || (state === 0 && !start.pending))) {
                     start.failed = true;
                     start.recoverable = true;
                     start.failedAt = Date.now();
@@ -179,7 +211,6 @@ async function readFromPage(request, controlQueue, updateFavorite, addPlaylistTr
             const liveStation = typeof window.__foliaLiveStation === 'string' ? window.__foliaLiveStation : '';
             const position = liveStation ? 0 : Number(mk.currentPlaybackTime);
             const duration = Number(item?.attributes?.durationInMillis);
-            const state = Number(mk.playbackState);
             // A queue that was set but not started has no now-playing item; the length tells the two apart.
             const queue = mk.queue;
             const queueLength = Number.isInteger(queue?.length)
@@ -257,11 +288,12 @@ async function readFromPage(request, controlQueue, updateFavorite, addPlaylistTr
                 playbackStage = 'configure';
                 if (typeof mk.setShuffleMode === 'function') mk.setShuffleMode(0);
                 if (typeof mk.setRepeatMode === 'function') mk.setRepeatMode(0);
-                // Set the queue without auto-start so queue resolution and DRM playback are distinct stages.
+                // Desktop separates queue resolution and DRM playback; the hidden WebView starts with its queue.
                 playbackStage = 'queue';
                 console.info('[AppleMusic] Playback stage: queue');
                 window.__foliaLiveStation = '';
-                await mk.setQueue({ song: request.params.catalogId, startPlaying: false, startTime: request.params.startSec });
+                await mk.setQueue({ song: request.params.catalogId, startPlaying: android,
+                    ...(!android || request.params.startSec > 0 ? { startTime: request.params.startSec } : {}) });
                 playbackStage = 'play';
                 console.info('[AppleMusic] Playback stage: play');
                 // MusicKit says why it gave a track up (licence, region, restriction, …) only as an event,
@@ -288,21 +320,24 @@ async function readFromPage(request, controlQueue, updateFavorite, addPlaylistTr
                         }
                     });
                 }
-                const attempt = { failed: false, recoverable: false, cancelled: false, sought: false, pending: true, startedAt: Date.now(),
+                const autoStarted = android && (mk.playbackState === 2 || mk.isPlaying === true);
+                const attempt = { failed: false, recoverable: false, cancelled: false, sought: false, pending: !autoStarted, startedAt: Date.now(),
                     song: request.params.catalogId, played: false, loaded: false, errorCode: '' };
                 window.__foliaStart = attempt;
                 // Buffering may take longer than the IPC budget. Observe completion without holding the control queue.
-                Promise.resolve(mk.play()).then(async () => {
-                    if (window.__foliaStart !== attempt) return;
-                    if (attempt.cancelled) { await mk.pause(); return; }
-                    if (!attempt.sought && request.params.startSec > 0 && typeof mk.seekToTime === 'function'
-                        && !(Number(mk.currentPlaybackTime) >= request.params.startSec - 1)) await mk.seekToTime(request.params.startSec);
-                }).catch(() => {
-                    if (window.__foliaStart === attempt && !attempt.cancelled) {
-                        attempt.failed = true;
-                        attempt.recoverable = false;
-                    }
-                }).finally(() => { attempt.pending = false; });
+                if (!autoStarted) {
+                    Promise.resolve(mk.play()).then(async () => {
+                        if (window.__foliaStart !== attempt) return;
+                        if (attempt.cancelled) { await mk.pause(); return; }
+                        if (!attempt.sought && request.params.startSec > 0 && typeof mk.seekToTime === 'function'
+                            && !(Number(mk.currentPlaybackTime) >= request.params.startSec - 1)) await mk.seekToTime(request.params.startSec);
+                    }).catch(() => {
+                        if (window.__foliaStart === attempt && !attempt.cancelled && (!android || mk.isPlaying !== true)) {
+                            attempt.failed = true;
+                            attempt.recoverable = false;
+                        }
+                    }).finally(() => { attempt.pending = false; });
+                }
             } catch {
                 console.warn('[AppleMusic] Playback command rejected', { operation: request.operation });
                 return { ok: false, error: 'playback-failed', playbackStage };

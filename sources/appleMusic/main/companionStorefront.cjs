@@ -33,11 +33,31 @@ function pageStorefront(address) {
 // redirects every page outside /cn back to /cn, so the page cannot always move to the account's
 // region. Point MusicKit at the account's storefront in place instead, and lift the preview-only
 // mode the web app chose for the other region when the account has a subscription.
-async function alignStorefront(mk) {
+async function alignStorefront(mk, call) {
+    if (mk?.isAuthorized !== true) return;
+    const isRegion = id => typeof id === 'string' && /^[a-z]{2}$/.test(id);
     // The region Folia's catalog reads used (companionRequests.cjs), else the one MusicKit has.
     const read = window.__foliaStorefront?.data?.data?.[0]?.id;
-    const account = typeof read === 'string' ? read : mk?.storefrontCountryCode;
-    if (mk?.isAuthorized !== true || typeof account !== 'string' || !/^[a-z]{2}$/.test(account)) return;
+    let account = typeof read === 'string' ? read : mk.storefrontCountryCode;
+    if (window.__foliaCompanionHost === 'android' && !isRegion(read)) {
+        // The native host remembers the account region across Apple page redirects. A first start
+        // may precede even its account probe, in which case ask the signed-in page directly.
+        const nativeRegion = window.__foliaAccountStorefront;
+        if (isRegion(nativeRegion)) account = nativeRegion;
+        else if (typeof call === 'function') {
+            try {
+                const answer = await call('v1/me/storefront');
+                const id = answer?.data?.data?.[0]?.id;
+                if (mk.isAuthorized === true && isRegion(id)) {
+                    account = id;
+                    window.__foliaAccountStorefront = id;
+                    window.__foliaStorefront = answer;
+                    window.FoliaAppleMusicBridge?.storefront?.(id);
+                }
+            } catch { /* Keep MusicKit's own region if the account region is unavailable. */ }
+        }
+    }
+    if (mk.isAuthorized !== true || !isRegion(account)) return;
     if (mk.storefrontId !== account) {
         mk.storefrontId = account;
         window.__foliaStorefrontAligned = true;
@@ -49,9 +69,14 @@ async function alignStorefront(mk) {
     // One question at a time per page, and a late answer still counts for the next start. A start
     // waits for it three seconds at most, then plays the previews, as before.
     if (typeof window.__foliaSubscribed !== 'boolean') {
-        window.__foliaSubscription ||= Promise.resolve().then(() => mk.hasMusicSubscription()).then(answer => {
-            if (typeof answer === 'boolean') window.__foliaSubscribed = answer;
-        }, () => {}).finally(() => { window.__foliaSubscription = null; });
+        if (!window.__foliaSubscription) {
+            const subscription = Promise.resolve().then(() => mk.hasMusicSubscription()).then(answer => {
+                if (window.__foliaSubscription === subscription && typeof answer === 'boolean') window.__foliaSubscribed = answer;
+            }, () => {}).finally(() => {
+                if (window.__foliaSubscription === subscription) window.__foliaSubscription = null;
+            });
+            window.__foliaSubscription = subscription;
+        }
         let timer;
         await Promise.race([window.__foliaSubscription, new Promise(done => { timer = setTimeout(done, 3000); })]);
         clearTimeout(timer);
