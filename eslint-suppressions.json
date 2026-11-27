@@ -1364,7 +1364,7 @@
       "count": 5
     },
     "@typescript-eslint/no-unsafe-member-access": {
-      "count": 16
+      "count": 18
     }
   },
   "sources/netease/core/netease.ts": {
