@@ -11,8 +11,11 @@ const readyState = {
     isReleaseNotesOpen: false,
     hasChosenPlaybackEntryView: false,
     needsLibrarySuitePrompt: false,
+    needsSourcesPrompt: false,
     isPlaybackEntryViewPromptOpen: false,
     isPonderOnboardingOpen: false,
+    needsLocalFolderAccessPrompt: false,
+    isLocalFolderAccessPromptOpen: false,
 };
 
 describe('startup experience gate', () => {
@@ -77,5 +80,28 @@ describe('startup experience gate', () => {
         // 问过就不再问；开着时等它关。
         expect(resolveStartupExperienceStep({ ...answered, needsLibrarySuitePrompt: false })).toBeNull();
         expect(resolveStartupExperienceStep({ ...answered, isPlaybackEntryViewPromptOpen: true })).toBeNull();
+    });
+
+    // Folium 2.0 S8：全新安装欠「你用哪些平台听歌」那一页，不看版本；答过（主进程记成 done）就不欠了。
+    it('opens the prompt for a fresh profile that owes the sources page, whatever the release', () => {
+        const owed = { ...readyState, needsSourcesPrompt: true };
+        expect(resolveStartupExperienceStep(owed)).toBe('release-notes');
+        expect(resolveStartupExperienceStep({ ...owed, hasSeenReleaseNotes: true })).toBe('playback-entry-view');
+        expect(resolveStartupExperienceStep({ ...owed, isCurrentRelease: false, hasChosenPlaybackEntryView: true })).toBe('playback-entry-view');
+        const answered = { ...owed, hasSeenReleaseNotes: true, hasChosenPlaybackEntryView: true, hasSeenPonder: true, hasFinishedThisRelease: true };
+        expect(resolveStartupExperienceStep(answered)).toBe('playback-entry-view');
+        expect(resolveStartupExperienceStep({ ...answered, isPlaybackEntryViewPromptOpen: true })).toBeNull();
+        expect(resolveStartupExperienceStep({ ...answered, needsSourcesPrompt: false })).toBeNull();
+    });
+    it('ends with the local folder access page, after everything else and outside the release', () => {
+        const owed = { ...readyState, needsLocalFolderAccessPrompt: true };
+        expect(resolveStartupExperienceStep(owed)).toBe('release-notes');
+        expect(resolveStartupExperienceStep({ ...owed, hasSeenReleaseNotes: true, hasChosenPlaybackEntryView: true })).toBe('ponder');
+        expect(resolveStartupExperienceStep({
+            ...owed, hasSeenReleaseNotes: true, hasChosenPlaybackEntryView: true, hasSeenPonder: true,
+        })).toBe('local-folder-access');
+        expect(resolveStartupExperienceStep({ ...owed, isCurrentRelease: false })).toBe('local-folder-access');
+        expect(resolveStartupExperienceStep({ ...owed, isCurrentRelease: false, isPonderOnboardingOpen: true })).toBeNull();
+        expect(resolveStartupExperienceStep({ ...owed, isCurrentRelease: false, isLocalFolderAccessPromptOpen: true })).toBeNull();
     });
 });
