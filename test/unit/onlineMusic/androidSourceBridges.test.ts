@@ -58,6 +58,15 @@ describe('local bridge injection', () => {
         expect(fetch).not.toHaveBeenCalled();
     });
 
+    it('rejects an empty NetEase bridge answer as an invalid response', async () => {
+        storage.set('netease:cookie', 'MUSIC_U=old-account');
+        const { createSource } = await import('../../../sources/netease/core');
+        createSource({ ...envOf('netease'), web: { apiBase: 'extension', bridge: bridgeOf(async () => null) } });
+        const { neteaseApi } = await import('../../../sources/netease/core/netease');
+        await expect(neteaseApi.getSongUrl(1)).rejects.toMatchObject({ code: 'invalid-response' });
+        expect(fetch).not.toHaveBeenCalled();
+    });
+
     it('shares one NetEase guest registration across concurrent requests', async () => {
         const handler = vi.fn(async (request: BridgeRequest) => request.operation === '/register/anonimous'
             ? { cookie: 'MUSIC_A=guest' } : { code: 200, data: [] });

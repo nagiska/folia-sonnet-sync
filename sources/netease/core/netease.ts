@@ -268,7 +268,7 @@ const guestCookie = async (): Promise<string> => {
     const bridge = neteaseEnv().web?.bridge;
     if (!bridge) return '';
     if (!guestCookieAsked) {
-        guestCookieAsked = bridge.request<{ cookie?: unknown }>({
+        guestCookieAsked = bridge.request<{ cookie?: unknown } | null>({
             operation: '/register/anonimous',
             path: '/register/anonimous',
             method: 'GET',
@@ -300,7 +300,7 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}, limit
             const loginCookie = readNeteaseCookie();
             const sessionCookie = loginCookie || await guestCookie();
             if (sessionCookie) query.cookie = sessionCookie;
-            const response = await bridge.request<NeteaseAnswer>({
+            const response = await bridge.request<NeteaseAnswer | null>({
                 operation: target.pathname,
                 path: target.pathname,
                 method: options.method || 'GET',
@@ -308,12 +308,13 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}, limit
                 body: options.body,
                 headers: Object.fromEntries(new Headers(options.headers || {}).entries()),
             });
-            const bridgeError: unknown = response?.__foliaBridgeError;
+            if (!response) throw neteaseError('invalid-response', 'NetEase local bridge returned an empty answer');
+            const bridgeError: unknown = response.__foliaBridgeError;
             if (typeof bridgeError === 'string' && bridgeError) {
                 const message: unknown = response.message;
                 throw new Error(typeof message === 'string' && message ? message : bridgeError);
             }
-            if (!loginCookie && sessionCookie && [301, 401, 403].includes(Number(response?.code))) {
+            if (!loginCookie && sessionCookie && [301, 401, 403].includes(Number(response.code))) {
                 guestCookieAsked = null;
                 setAnonymousCookie(null);
             }

@@ -17,7 +17,7 @@ export interface NeteaseWebEnv {
     /** An address, or a same-origin path; empty where none is configured. */
     apiBase: string;
     /** Optional native HTTP for a configured API; the desktop keeps its own fetch. */
-    fetch?(this: void, url: string, options?: RequestInit): Promise<Pick<Response, 'status' | 'ok' | 'text' | 'json'>>;
+    fetch?: (url: string, options?: RequestInit) => Promise<Pick<Response, 'status' | 'ok' | 'text' | 'json'>>;
     /** Optional local transport, injected by the Android/browser host. */
     bridge?: {
         configured(base: string): boolean;

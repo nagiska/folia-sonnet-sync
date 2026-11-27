@@ -1361,10 +1361,10 @@
       "count": 1
     },
     "@typescript-eslint/no-unsafe-assignment": {
-      "count": 8
+      "count": 5
     },
     "@typescript-eslint/no-unsafe-member-access": {
-      "count": 20
+      "count": 16
     }
   },
   "sources/netease/core/netease.ts": {
@@ -1841,13 +1841,13 @@
       "count": 1
     },
     "@typescript-eslint/no-unsafe-assignment": {
-      "count": 9
+      "count": 8
     },
     "@typescript-eslint/no-unsafe-call": {
       "count": 4
     },
     "@typescript-eslint/no-unsafe-member-access": {
-      "count": 21
+      "count": 20
     },
     "@typescript-eslint/no-unsafe-return": {
       "count": 1

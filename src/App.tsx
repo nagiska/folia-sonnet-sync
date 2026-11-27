@@ -1421,7 +1421,7 @@ export default function App() {
 
     useAndroidMediaSessionBridge({
         title: isNowPlayingStageActive ? null : (displaySong?.name ?? null),
-        artist: displaySong && !isNowPlayingStageActive ? (getSongArtistLabel(displaySong) || t('ui.unknownArtist')) : null,
+        artist: displaySong && !isNowPlayingStageActive ? (getSongArtistLabel(displaySong) || t('player.unknownArtist')) : null,
         album: displaySong && !isNowPlayingStageActive ? getSongAlbumLabel(displaySong) : null,
         // The displayed track's own cover and length: `cachedCoverUrl` and `duration` follow the
         // ARRIVING track during a blend, and pairing either with the outgoing title is the mismatch

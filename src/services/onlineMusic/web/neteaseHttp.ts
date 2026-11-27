@@ -34,7 +34,7 @@ export const fetchNeteaseResponse = async (
     return {
         status: response.status,
         ok: response.status >= 200 && response.status < 300,
-        text: async () => body,
-        json: async () => JSON.parse(body) as unknown,
+        text: () => Promise.resolve(body),
+        json: () => Promise.resolve().then(() => JSON.parse(body) as unknown),
     };
 };
