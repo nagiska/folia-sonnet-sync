@@ -119,6 +119,23 @@ jobs:
       - name: Lint
         run: npm run dedicatus -- --lint --github ${{ github.event_name == 'pull_request' && '--base HEAD^1' || '--no-base' }}
 
+      # Temporary migration diagnostic: emit only old-move/prune metadata; never conceal the failed Lint result.
+      - name: Diagnose v0.8.2 lint metadata
+        if: failure() && github.head_ref == 'sync/v0.8.2'
+        run: |
+          cp eslint-suppressions.json "$RUNNER_TEMP/folia-lint-before.json"
+          npm run dedicatus -- --adopt-moved --base HEAD^1 || true
+          npm run lint:prune -- --base HEAD^1 || true
+          python3 - <<'PY'
+          import json, os
+          with open(os.path.join(os.environ['RUNNER_TEMP'], 'folia-lint-before.json')) as f:
+              before = json.load(f)
+          with open('eslint-suppressions.json') as f:
+              after = json.load(f)
+          delta = {k: {'before': before.get(k), 'after': after.get(k)} for k in set(before) | set(after) if before.get(k) != after.get(k)}
+          print('LINT_METADATA_DELTA=' + json.dumps(delta, ensure_ascii=False))
+          PY
+
   typecheck-sync-server:
     name: Typecheck sync-server
     if: github.event_name == 'push' || github.event.pull_request.draft == false

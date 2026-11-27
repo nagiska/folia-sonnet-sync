@@ -481,7 +481,7 @@ export const createWebKugouTransport = (env: KugouTransportEnv, web: KugouWebEnv
 
     const persistWebSession = (operation: KugouOperation, response: any): void => {
         const signIn = confirmedSignIn(operation, response);
-        const cookies = response?.cookie || response?.data?.cookie || response?.session?.cookie;
+        const cookies: unknown = response?.cookie || response?.data?.cookie || response?.session?.cookie;
         const cookieEntries = (typeof cookies === 'string' ? cookies.split(';')
             : Array.isArray(cookies) ? cookies.map(String) : [])
             .map(entry => entry.trim())
@@ -495,7 +495,7 @@ export const createWebKugouTransport = (env: KugouTransportEnv, web: KugouWebEnv
         syncSession();
     };
 
-    const execute = async (targetOperation: KugouOperation, targetParams: KugouParams): Promise<any> => {
+    const execute = async (targetOperation: KugouOperation, targetParams: KugouParams): Promise<unknown> => {
         const bridge = web.bridge;
         if (bridge?.configured(base)) {
             const send = () => bridge.request<{ __foliaBridgeError?: string; message?: string }>({

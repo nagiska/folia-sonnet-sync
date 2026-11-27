@@ -1355,7 +1355,7 @@
   },
   "sources/kugou/core/kugouTransport.ts": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 7
+      "count": 6
     },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
@@ -10431,9 +10431,6 @@
     },
     "@typescript-eslint/no-unnecessary-type-assertion": {
       "count": 1
-    },
-    "dedicatus/restricted-apis": {
-      "count": 2
     }
   },
   "src/stores/useSettingsModalStore.ts": {

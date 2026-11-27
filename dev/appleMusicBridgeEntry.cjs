@@ -1,5 +1,5 @@
 const { validateRequest, requestExpression } = require('../sources/appleMusic/main/companionRequests.cjs');
-const { diagnosticsExpression } = require('./appleMusicAndroidDiagnostics.cjs');
+const { diagnosticsExpression, withDiagnosticsObservers } = require('./appleMusicAndroidDiagnostics.cjs');
 
 // Runs inside the Android Apple Music WebView. Java asks for the page expression, then evaluates it
 // directly so Apple's CSP never sees an eval().
@@ -7,7 +7,7 @@ window.__foliaAppleMusicBuild = function (message) {
     if (message && message.operation === 'diagnostics' && typeof message.id === 'string'
         && /^[a-zA-Z0-9_-]{1,64}$/.test(message.id)) return diagnosticsExpression();
     const request = validateRequest(message);
-    return request ? requestExpression(request) : null;
+    return request ? withDiagnosticsObservers(requestExpression(request)) : null;
 };
 
 // The page's own console is where a start that never sounds explains itself. Keep the tail on the

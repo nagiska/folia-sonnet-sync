@@ -1444,7 +1444,7 @@ export default function App() {
             && !isShowingTail
             && !resolveLikeAvailability(displaySong, false, isNowPlayingStageActive).disabled
         ),
-        isLiked: resolveSongLiked(displaySong, { isLocalSongLiked, starredNavidromeSongIds }),
+        isLiked: resolveSongLiked(displaySong, { isFoliaSongLiked, starredNavidromeSongIds }),
         playing: displayPlayerState === PlayerState.PLAYING,
         controlsDisabled: isNowPlayingStageActive || isShowingTail,
         play: () => mediaSessionPlayRef.current(),

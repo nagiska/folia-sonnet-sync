@@ -308,7 +308,11 @@ const fetchWithCreds = async (endpoint: string, options: RequestInit = {}, limit
                 body: options.body,
                 headers: Object.fromEntries(new Headers(options.headers || {}).entries()),
             });
-            if (response?.__foliaBridgeError) throw new Error(response.message || response.__foliaBridgeError);
+            const bridgeError: unknown = response?.__foliaBridgeError;
+            if (typeof bridgeError === 'string' && bridgeError) {
+                const message: unknown = response.message;
+                throw new Error(typeof message === 'string' && message ? message : bridgeError);
+            }
             if (!loginCookie && sessionCookie && [301, 401, 403].includes(Number(response?.code))) {
                 guestCookieAsked = null;
                 setAnonymousCookie(null);

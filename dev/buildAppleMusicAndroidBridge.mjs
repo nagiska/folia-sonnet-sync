@@ -25,13 +25,26 @@ try {
     assert.equal(output.length, 1, 'The Android injection must be a single script');
     assert.equal(output[0].type, 'chunk');
     const noop = () => {};
-    const sandbox = { window: {}, navigator: {}, console: { log: noop, info: noop, warn: noop, error: noop } };
-    vm.runInNewContext(output[0].code, sandbox);
+    const player = { repeatMode: 0, api: { v3: { music: async () => ({ status: 200, data: { data: [] } }) } } };
+    const sandbox = {
+        window: { MusicKit: { getInstance: () => player }, __foliaStorefront: { data: { data: [{ id: 'us' }] } } },
+        navigator: { onLine: true },
+        document: { querySelectorAll: () => [], querySelector: () => null, visibilityState: 'hidden' },
+        location: { origin: 'https://music.apple.com', pathname: '/us/' },
+        performance: { getEntriesByType: () => [] },
+        URL,
+        console: { log: noop, info: noop, warn: noop, error: noop },
+    };
+    const context = vm.createContext(sandbox);
+    vm.runInContext(output[0].code, context);
     for (const [operation, params] of [['librarySongs', {}], ['setRepeatOne', { enabled: true }], ['diagnostics', {}]]) {
         const expression = sandbox.window.__foliaAppleMusicBuild({ id: 'ci_protocol_check', operation, params });
         assert.equal(typeof expression, 'string', `${operation} must have a page expression`);
-        new vm.Script(expression);
+        // Match Java's actual Promise.resolve wrapper too: an unparenthesized comma expression loses the result.
+        const result = await vm.runInContext(`Promise.resolve(${expression})`, context);
+        assert.equal(result?.ok, true, `${operation} must return its companion answer`);
     }
+    assert.equal(player.repeatMode, 1);
     console.info('[AppleMusic] Android companion script generated and protocol smoke checks passed');
 } finally {
     await build.close();

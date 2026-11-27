@@ -7,7 +7,7 @@ async function readAndroidDiagnostics() {
     try { mk = window.MusicKit?.getInstance?.() ?? null; } catch { /* Page not ready. */ }
     const scrubText = value => String(value).replace(/https?:\/\/[^\s"'<>]+/g, link => {
         try { return new URL(link).host; } catch { return 'url'; }
-    }).replace(/[A-Za-z0-9_\-]{40,}/g, '<blob>').slice(0, 200);
+    }).replace(/[A-Za-z0-9_-]{40,}/g, '<blob>').slice(0, 200);
     const elements = Array.from(document.querySelectorAll('audio,video'));
     const element = document.querySelector('audio');
     const round = value => Number.isFinite(value) ? Math.round(value * 10) / 10 : null;
@@ -76,5 +76,34 @@ async function readAndroidDiagnostics() {
     } };
 }
 
-const diagnosticsExpression = () => `(${readAndroidDiagnostics.toString()})()`;
-module.exports = { diagnosticsExpression };
+// Preserve the old bounded media/state tapes on the page; attaching twice to one element is a no-op.
+function observePage() {
+    if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
+    if (!Array.isArray(window.__foliaMedia)) window.__foliaMedia = [];
+    for (const [index, element] of Array.from(document.querySelectorAll('audio,video')).entries()) {
+        if (element.__foliaWatched) continue;
+        element.__foliaWatched = true;
+        for (const type of ['loadstart', 'loadedmetadata', 'waiting', 'stalled', 'playing', 'pause', 'error', 'suspend']) {
+            element.addEventListener(type, () => {
+                window.__foliaMedia.push({ at: Date.now(), index, type, t: Math.round((element.currentTime || 0) * 10) / 10,
+                    ready: element.readyState, network: element.networkState, error: element.error?.code ?? null });
+                if (window.__foliaMedia.length > 80) window.__foliaMedia.shift();
+            }, true);
+        }
+    }
+    let mk;
+    try { mk = window.MusicKit?.getInstance?.(); } catch { return; }
+    if (!mk || window.__foliaStateWatched || typeof mk.addEventListener !== 'function') return;
+    try {
+        mk.addEventListener('playbackStateDidChange', () => {
+            window.__foliaStates.push({ at: Date.now(), state: Number(mk.playbackState), playing: mk.isPlaying === true });
+            if (window.__foliaStates.length > 40) window.__foliaStates.shift();
+        });
+        window.__foliaStates = [];
+        window.__foliaStateWatched = true;
+    } catch { /* A page without player events can still be diagnosed. */ }
+}
+
+const withDiagnosticsObservers = expression => `((${observePage.toString()})(),(${expression}))`;
+const diagnosticsExpression = () => withDiagnosticsObservers(`(${readAndroidDiagnostics.toString()})()`);
+module.exports = { diagnosticsExpression, withDiagnosticsObservers };

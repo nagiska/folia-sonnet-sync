@@ -399,14 +399,15 @@ const assertUpstreamAccepted = (operation: QqOperation, body: any): void => {
  * `session.cookie` 上，不是顶层 `cookie`。只认顶层就等于「手机上明明确认了，会话却没存下」，
  * 紧接着的 user_detail 于是报 `no backend session stored`、登录停在 account-not-read。
  */
-const firstCookieString = (body: any): string => {
-    const candidates = [body?.cookie, body?.data?.cookie, body?.session?.cookie];
+const firstCookieString = (body: unknown): string => {
+    const answer = body as { cookie?: unknown; data?: { cookie?: unknown }; session?: { cookie?: unknown; cookieList?: unknown } } | null;
+    const candidates = [answer?.cookie, answer?.data?.cookie, answer?.session?.cookie];
     for (const value of candidates) {
         if (typeof value === 'string' && value.trim()) return value.trim();
     }
-    const list = body?.session?.cookieList;
+    const list = answer?.session?.cookieList;
     if (Array.isArray(list) && list.length) {
-        const joined = list.filter((item: unknown) => typeof item === 'string' && item.trim()).join('; ');
+        const joined = list.filter((item: unknown): item is string => typeof item === 'string' && Boolean(item.trim())).join('; ');
         if (joined) return joined;
     }
     return '';
@@ -599,7 +600,7 @@ export const requestQq = async <T = unknown>(
     if (bridge?.configured(base)) {
         const endpoint = endpointFor(operation, params);
         try {
-            const bridged = await bridge.request<any>({
+            const bridged = await bridge.request<{ __foliaBridgeError?: string; message?: string }>({
                 operation,
                 method: POST_OPERATIONS.has(operation) ? 'POST' : 'GET',
                 path: endpoint.path,
