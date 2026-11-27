@@ -130,7 +130,7 @@ Each lyric animation has its own typography, mood, and tunable parameters, givin
 | Now Playing integration | Connects to a local [Now Playing](https://github.com/Widdit/now-playing-service/) service to take song, timeline, and lyric data from external players and drive Folia's stage view and full-screen lyrics. |
 | AI themes | Generates immersive backgrounds and visual parameters from a song's mood and lyrics. |
 | Multi-platform | Deploy as a web app or install the packaged desktop app. |
-| Mods (experimental) | On desktop, Folium mods can add lyric animations, backgrounds, player-page layers, commands, and more. Install officially verified mods from the [mod market](https://folium-compound.cielaniska.top). See [Mods](#mods-folium-v1x). |
+| Mods | On desktop, Folium mods can add lyric animations, backgrounds, player-page layers, commands, music sources, and more. The mod market lives in **Settings → Mods**, where you install, update, and uninstall mods. See [Mods](#mods-folium-2). |
 
 ## Get Folia
 
@@ -160,6 +160,13 @@ Self-hosters can use the [Docker Compose full-stack deployment](deploy/docker/RE
 > [!IMPORTANT]
 > If GitHub Releases is slow from mainland China, download from [Quark](https://pan.quark.cn/s/6e4c6fa3bc6f) or [Baidu](https://pan.baidu.com/s/1f0x3g-8PMcNCO-TJ5z1rPw?pwd=flia) instead. These links host stable installers for Windows and Apple silicon only.
 
+> [!WARNING]
+> **Kaspersky installed, and Folia opens to a black window with a crash dialog?**
+>
+> Kaspersky does not recognize the unsigned `Folia.exe`, puts it in a restricted group, and its System Watcher stops the page process.
+>
+> Fix: in Kaspersky, add `Folia.exe` to "Trusted applications" and tick "Do not monitor application activity", then quit Folia and open it again. Moving it to the Trusted group alone does not help. See [#1346](https://github.com/chthollyphile/folia-major/issues/1346).
+
 For Linux packages, the Wayland / Hyprland remote control window, and other desktop details, see [Technical Notes](docs/technical.md) (Chinese).
 
 ### Mobile
@@ -181,14 +188,17 @@ Deployment, environment variables, local development, the Stage API, common scri
 
 Before contributing, read the [Contributing Guide](CONTRIBUTING.en.md).
 
-## Mods (Folium v1.x)
+## Mods (Folium 2)
 
 > [!NOTE]
-> Mods are experimental, available in the desktop app only, and off by default. Turn them on in **Settings → Mods → Mod system**.
+> Mods are available in the desktop app only. From Folium 2 the mod system is on by default but installs and runs only officially signed source mods; turn on **Community mods** in **Settings → Mods** for the others.
 
 Folium is Folia's mod platform. Mods can add lyric animation modes and background types, overlay content on the player page, add buttons and markers to the progress bar, register commands and settings sections, rewrite lyrics before they are displayed, and use native capabilities such as ffmpeg through a Node entry point. Mods run as trusted code: you confirm each mod in a native window before it is enabled, and confirm again after its files change.
 
-- **Mod market**: [folium-compound.cielaniska.top](https://folium-compound.cielaniska.top) hosts official mods and reviewed community mods. Download the zip and drag it into the Mods panel to install.
+- **Mod market**: **Settings → Mods** shows your installed mods and the [mod market](https://folium-compound.cielaniska.top) in one view: find mods by category or keyword, and install, update, or uninstall them in one click (an uninstalled mod's folder goes to the trash). You can also download a zip from the site and drag it into the Mods page.
+- **Reporting problems**: Each mod is maintained by its author. When a mod misbehaves, use **Report a problem** in its detail to reach the author's repository instead of filing it with Folia.
+- **Third-party sources and other works**: Third-party source mods, system plugins, and external programs are not kept in the market's repository; they are listed as links in Awesome-Folia and still show up in the in-app market.
+- **Mods with an expired version range**: A mod whose manifest caps Folia (say `<0.8.0`) is not loaded on a newer Folia, but it still installs, and you can choose **Try loading anyway** in its detail.
 - **Verification**: Every mod in the market carries a Folium signature and shows as **Verified** after install. Early-access mods that passed only the security review show as **Preview**. Third-party mods without a signature show as **Unverified** and still work.
 - **Developing and contributing**: The [mod development and contribution guide](docs/folium/contributing.md) walks from your first mod and local debugging through submitting to the market, review and signing, and publishing updates.
 - **API reference**: The [Folium API reference](docs/folium/api.md) is generated from the contract file and organized by registries, contexts, events, and services.

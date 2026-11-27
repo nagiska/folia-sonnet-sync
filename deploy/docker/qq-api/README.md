@@ -9,7 +9,7 @@
 | 项 | 内容 |
 | --- | --- |
 | npm 包 | [`@yakult-green-tea/qq-music-api`](https://www.npmjs.com/package/@yakult-green-tea/qq-music-api) |
-| 版本 | `3.3.6`，锁定在 [`package.json`](./package.json) 与 `package-lock.json` |
+| 版本 | `3.3.9`，锁定在 [`package.json`](./package.json) 与 `package-lock.json` |
 | 原始上游 | [Rain120/qq-music-api](https://github.com/Rain120/qq-music-api)，作者 Rain120 |
 | 许可证 | MIT；全文随包安装在 `node_modules/@yakult-green-tea/qq-music-api/LICENSE` |
 | 镜像定义 | [`images/qq-api.Dockerfile`](../images/qq-api.Dockerfile) |
@@ -70,7 +70,7 @@ PORT=3200 \
   node node_modules/@yakult-green-tea/qq-music-api/dist/src/app.js
 ```
 
-该包在被 `require()` 时就会 `app.listen()`，并导出 http server 句柄 `server`。嵌入到其他 Node 进程时应等 `listening` 事件确认端口绑定成功、挂 `error` 监听避免绑定失败变成未处理异常，退出时主动 `close()`；因为 `require` 有模块缓存，同一进程内只应该 `require()` 一次。Electron 版走的正是这条路径（见 [`electron/qq/qqApiStartup.cjs`](../../../electron/qq/qqApiStartup.cjs)），端口动态分配，装置状态写在 `userData/qq-auth-state/qq-device.json`。
+该包在被 `require()` 时就会 `app.listen()`，并导出 http server 句柄 `server`。嵌入到其他 Node 进程时应等 `listening` 事件确认端口绑定成功、挂 `error` 监听避免绑定失败变成未处理异常，退出时主动 `close()`；因为 `require` 有模块缓存，同一进程内只应该 `require()` 一次。Electron 版走的正是这条路径（QQ 音源模组的 main 入口，见 [`sources/qq/main/qqApiStartup.cjs`](../../../sources/qq/main/qqApiStartup.cjs)），端口动态分配，装置状态写在 `userData/qq-auth-state/qq-device.json`。
 
 ### Web 版接法
 
@@ -232,6 +232,16 @@ Cloudflare 上可以用 Durable Object 补上它——DO 能跨调用持有那�
 - 账号的音乐偏好 `/user/recommendation-preferences` 与 `POST /user/recommendation-preferences/update`（只改交来的几项，写一次、读回核对，不自动重送）。后端低于 3.3.6 时，偏好设置面板读不出来。
 - 猜你喜欢电台的听歌模式目录 `/user/guess-you-like/modes` 与按模式取歌 `/user/guess-you-like/tracks`（只带 pool，不改账号的模式设置）。后端低于 3.3.6 时，猜你喜欢只有默认一种模式。
 - 后端低于 3.3.6 时，私人 FM 照旧读 `/user/guess-you-like`；每日推荐没有历史日期，点歌曲的不喜欢会提示失败，探索页没有首页 feed 那几栏，歌单里没有听歌排行，其他功能照旧。
+
+3.3.8 起：
+
+- 取播放地址时，上游明确说没给完整文件（104003）的歌，会换官方网页播放器的身份再要一次。想关掉可以设环境变量 `QQ_PLAYBACK_FALLBACK_ENABLED=0`。
+
+3.3.9 起：
+
+- 中国大陆网络下，部分公开歌单的旧接口回 `0/4000` 时，后端会改用匿名公开接口完整重读，最多 1500 首；匿名读不到且请求带会话时再用登录读，读不完整就保留原来的错误。歌单封面、空歌单与播放数字段保持兼容。
+- 对带下架特征的歌曲，`/song/replacement` 也会找其他版本，Folia 沿用现有的改播对话框。3.3.8 增加的会员取链备用方式也一并包含，官方网页同样拿不到音源的歌仍按原规则处理。
+- 升级镜像后重建并重新创建容器，保留已有状态卷与密钥。
 
 排查时先看容器日志：
 

@@ -132,7 +132,7 @@ https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
 | Now Playing 接入 | 支持通过本机 [Now Playing](https://github.com/Widdit/now-playing-service/) 服务接入外部播放器的歌曲、时间轴与歌词信息，并驱动 Folia 的舞台视图与全屏歌词渲染。 |
 | AI 主题生成 | 基于歌曲情绪与歌词内容生成沉浸式背景与视觉参数。 |
 | 多端体验 | 提供 Web 部署方式，同时支持桌面端打包分发。 |
-| 模组系统（实验性） | 桌面版可通过 Folium 模组添加歌词动画、背景、播放页图层、命令等，并从 [模组市场](https://folium-compound.cielaniska.top) 安装官方认证的模组。详见 [模组系统](#模组系统folium-v1x)。 |
+| 模组系统 | 桌面版可通过 Folium 模组添加歌词动画、背景、播放页图层、命令、音源等；模组市场就在「设置 → 模组」里，安装、更新、卸载都在应用内完成。详见 [模组系统](#模组系统folium-2)。 |
 
 ## 获取方式
 
@@ -160,13 +160,13 @@ Vercel 与 Cloudflare 上的 QQ 音乐不再需要额外部署一个常驻 API �
 
 ## Android（Capacitor）
 
-本仓库是 Folia-major 的 Android 打包分支，当前代码已同步上游 **v0.7.29**，在保留 Capacitor 工程的前提下做了 Android 专用适配：
+本仓库是 Folia-major 的 Android 打包分支，当前代码已同步上游 **v0.8.2**，在保留 Capacitor 工程的前提下做了 Android 专用适配：
 
 - **APK 下载**：到本仓库 [Releases](https://github.com/nagiska/folia-sonnet-sync/releases/latest) 取最新调试包；每次默认分支构建也会在 `Android Build` 工作流里留一份产物。
 - **全面屏**：安全区由原生 `FoliaWindow` / `FoliaWindowInsets` 统一注入 `--folia-safe-area-*`，播放页隐藏系统栏、边缘滑动唤出。
 - **横屏界面缩放**：手机横屏自动进紧凑档——rem 基准整体缩小、面板顶边距与安全区收回，播放面板和弹出的选择器在矮屏上放得下；竖屏与平板不受影响。
 - **系统媒体通知**：显示当前封面与可拖动的播放进度，支持暂停/继续、上一首/下一首、进度定位，以及当前歌曲可用时的收藏。它不是 Android 前台媒体服务，WebView 被系统回收或设备厂商限制后台时不保证锁屏后持续播放。
-- **本地登录**：`.env.capacitor` 里的 `VITE_*_API_BASE` 全部写成 `extension`，请求交给 App 内置的 `src/nativeBridge`——网易云自己加密直连，QQ 音乐与酷狗走内置接口实现，都不需要部署 API 服务器。
+- **本地登录**：`.env.capacitor` 里的 `VITE_*_API_BASE` 全部写成 `extension`，请求交给 App 内置的 `src/nativeBridge`——网易云自己加密直连，QQ 音乐与酷狗走内置接口实现，都不需要部署 API 服务器。v0.8.2 已接入 Folium 2 音源模组：通过 env 注入本地桥，原有登录会话键保持不变。
 - **Apple Music**：`FoliaAppleMusic` 插件在 App 内开一个隐藏 WebView 跑 `music.apple.com`，登录、搜索、歌单与播放都在里面，接口形状与桌面版 companion 一致。
 - **登录支持**：网易云、QQ 音乐、酷狗、Apple Music。波点音乐暂缺（需要原生回环转发音频）；YouTube Music、Spotify、汽水音乐走桌面主进程，Android 上不列出。
 - **不支持**：本地音乐扫描，以及桌面端专属能力（HiFi / mpv 播放引擎、遥控窗口、壁纸模式等）。
@@ -196,6 +196,13 @@ cd android
 > [!IMPORTANT]
 > 如果国内网络从 GitHub Releases 下载较慢，可以使用 [夸克网盘](https://pan.quark.cn/s/6e4c6fa3bc6f) 或 [百度云](https://pan.baidu.com/s/1f0x3g-8PMcNCO-TJ5z1rPw?pwd=flia) 下载。网盘链接仅提供 Windows 与 Apple silicon 的正式版安装包.
 
+> [!WARNING]
+> **装了卡巴斯基，Folia 打开后是黑窗口并弹出崩溃提示？**
+>
+> 卡巴斯基不认识没有代码签名的 `Folia.exe`，会把它放进受限制的组，由「系统监控」拦下页面进程。
+>
+> 解决办法：在卡巴斯基的「受信任的应用程序」里添加 `Folia.exe`，并勾选「不监控应用程序活动」，然后退出 Folia 再重新打开。只把信任组改成「受信任」不管用。详见 [#1346](https://github.com/chthollyphile/folia-major/issues/1346)。
+
 Linux 包、Wayland / Hyprland 遥控窗和桌面端细节见 [技术与开发说明](docs/technical.md)。
 
 ### 移动端
@@ -215,14 +222,17 @@ Linux 包、Wayland / Hyprland 遥控窗和桌面端细节见 [技术与开发�
 
 部署、环境变量、本地开发、Stage API、常用脚本和技术栈见 [技术与开发说明](docs/technical.md)。
 
-## 模组系统（Folium v1.x）
+## 模组系统（Folium 2）
 
 > [!NOTE]
-> 模组系统是实验性功能，仅桌面版可用，默认关闭，需要在「设置 → 模组 → 模组系统」中开启。
+> 模组系统仅桌面版可用，Folium 2 起默认开启，但只装、只跑官方签名的音源模组；其它模组要先在「设置 → 模组」里打开「社区模组」。
 
 Folium 是 Folia 的模组平台。模组可以添加新的歌词动画模式和背景类型、在播放页上叠加内容、给进度条加按钮和标记、注册命令与设置分区、在歌词显示前改写歌词，也可以通过 Node 入口调用 ffmpeg 等本地能力。模组以可信代码运行，每个模组在启用前都要在原生窗口中确认，文件变化后需要重新确认。
 
-- **模组市场**：[folium-compound.cielaniska.top](https://folium-compound.cielaniska.top) 提供官方模组和经过审查的社区模组，下载 zip 后拖进模组面板即可安装。
+- **模组市场**：「设置 → 模组」把已安装的模组和 [模组市场](https://folium-compound.cielaniska.top) 合在一个视图里，可以按分类和关键词查找，一键安装、更新和卸载（卸载的文件夹进回收站）。也可以在网站上下载 zip，拖进模组页安装。
+- **反馈问题**：模组由各自的作者维护。模组出了问题，请在模组详情里点「反馈问题」，到作者的仓库反馈，不要提交到 Folia 的仓库。
+- **第三方音源与外部作品**：第三方音源模组、系统插件和外部程序不收进模组市场的仓库，以外部链接登记在 Awesome-Folia，同样能在应用里的模组市场找到。
+- **版本声明过期的模组**：清单里写了 `<0.8.0` 之类上界的模组在更新的 Folia 上不会自动加载，但仍能安装，可以在模组详情里手动「仍然尝试加载」。
 - **官方认证**：市场里的模组都带有 Folium 签名，安装后显示「官方认证」；只通过安全审查的先行测试模组显示「先行测试」；没有签名的第三方模组显示「未验证」，同样可以使用。
 - **开发与贡献**：[模组开发与贡献指南](docs/folium/contributing.md)，从写第一个模组、本地调试，到提交到模组市场、审查与签名、发布更新。
 - **API 参考**：[Folium API 参考](docs/folium/api.md)，由契约文件生成的完整接口文档，按注册表、上下文、事件、服务等分类查询。
@@ -280,6 +290,7 @@ Folia 会读取音频文件元数据、同目录歌词和封面，并可通过�
 - [MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusicApi)
 - [paper-design/shaders](https://github.com/paper-design/shaders)
 - [yakult-green-tea/qq-music-api](https://github.com/yakult-green-tea/qq-music-api)
+- [zzyoxml/md3Music](https://github.com/zzyoxml/md3Music)
 
 本项目接入了 [Apple Music-like Lyrics TTML 逐词歌词库](https://github.com/amll-dev/amll-ttml-db) 以提供高质量的歌词文件，感谢此歌词库的作者和贡献者们。
 
